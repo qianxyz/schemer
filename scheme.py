@@ -61,7 +61,8 @@ def atom(token: str) -> Atom:
     except ValueError:
         try: return float(token)
         except ValueError:
-            return Symbol(token)
+            # point same symbols to the same Python object
+            return sys.intern(token)
 
 
 def standard_env() -> Env:
