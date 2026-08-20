@@ -107,11 +107,11 @@ def eval(x: Exp, env: Env) -> Exp:
     op, *args = x
     if op == "quote":
         return args[0]
-    elif op == "if":
-        test, conseq, alt = args
-        # in Scheme only #f is false
-        exp = conseq if eval(test, env) is not False else alt
-        return eval(exp, env)
+    elif op == "cond":
+        for test, exp in args:
+            # in Scheme only #f is false
+            if test == "else" or eval(test, env) is not False:
+                return eval(exp, env)
     elif op == "define":
         symbol, exp = args
         env[symbol] = eval(exp, env)
