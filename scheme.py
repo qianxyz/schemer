@@ -60,6 +60,8 @@ def atom(token: str) -> Atom:
     except ValueError:
         try: return float(token)
         except ValueError:
+            if token == "#t": return True
+            if token == "#f": return False
             return Symbol(token)
 
 
@@ -107,7 +109,8 @@ def eval(x: Exp, env: Env) -> Exp:
         return args[0]
     elif op == "if":
         test, conseq, alt = args
-        exp = conseq if eval(test, env) else alt
+        # in Scheme only #f is false
+        exp = conseq if eval(test, env) is not False else alt
         return eval(exp, env)
     elif op == "define":
         symbol, exp = args
@@ -125,6 +128,8 @@ def schemestr(exp: Exp):
     """Convert a Scheme expression to a printable Python string."""
     if isinstance(exp, List):
         return "(" + " ".join(schemestr(x) for x in exp) + ")"
+    if exp is True: return "#t"
+    if exp is False: return "#f"
     return str(exp)
 
 
