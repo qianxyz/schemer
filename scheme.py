@@ -1,6 +1,5 @@
 import sys
 import argparse
-import operator as op
 from collections import ChainMap
 from typing import Iterator
 
@@ -61,22 +60,39 @@ def atom(token: str) -> Atom:
     except ValueError:
         try: return float(token)
         except ValueError:
-            # point same symbols to the same Python object
-            return sys.intern(token)
+            return Symbol(token)
 
 
 def standard_env() -> Env:
     """Create a standard Scheme environment."""
+
+    def _car(x):
+        if isinstance(x, List) and x: return x[0]
+        raise ValueError("car is defined only for non-empty lists")
+
+    def _cdr(x):
+        if isinstance(x, List) and x: return x[1:]
+        raise ValueError("cdr is defined only for non-empty lists")
+
+    def _cons(x, y):
+        if isinstance(y, List): return [x] + y
+        raise ValueError("the second argument to cons must be a list")
+
+    def _is_null(x):
+        if isinstance(x, List): return x == []
+        raise ValueError("null? is defined only for lists")
+
+    def _is_eq(x, y):
+        if isinstance(x, Symbol) and isinstance(y, Symbol): return x == y
+        raise ValueError("the arguments to eq? must be non-numeric atoms")
+
     return Env({
-        "+":op.add, "-":op.sub, "*":op.mul, "/":op.truediv,
-        ">":op.gt, "<":op.lt, ">=":op.ge, "<=":op.le, "=":op.eq,
-        "begin": lambda *x: x[-1],
-        "car":   lambda x: x[0],
-        "cdr":   lambda x: x[1:], 
-        "cons":  lambda x,y: [x] + y,
-        "eq?":   op.is_,
-        "null?": lambda x: x == [],
-        "list?": lambda x: isinstance(x, List),
+        "car":   _car,
+        "cdr":   _cdr,
+        "cons":  _cons,
+        "null?": _is_null,
+        "atom?": lambda x: isinstance(x, Atom),
+        "eq?":   _is_eq,
     })
 
 
