@@ -24,7 +24,10 @@ class Procedure:
 
 def tokenize(source: str) -> list[str]:
     """Convert a Scheme source program into a list of tokens."""
-    return source.replace("(", " ( ").replace(")", " ) ").split()
+    comments_stripped = "\n".join(
+        line.partition(";")[0] for line in source.splitlines()
+    )
+    return comments_stripped.replace("(", " ( ").replace(")", " ) ").split()
 
 
 def parse(source: str) -> Iterator[Exp]:
