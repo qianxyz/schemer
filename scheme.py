@@ -70,23 +70,34 @@ def standard_env() -> Env:
 
     def _car(x):
         if isinstance(x, List) and x: return x[0]
-        raise ValueError("car is defined only for non-empty lists")
+        raise ValueError(
+            f"car is defined only for non-empty lists, got {schemestr(x)}"
+        )
 
     def _cdr(x):
         if isinstance(x, List) and x: return x[1:]
-        raise ValueError("cdr is defined only for non-empty lists")
+        raise ValueError(
+            f"cdr is defined only for non-empty lists, got {schemestr(x)}"
+        )
 
     def _cons(x, y):
         if isinstance(y, List): return [x] + y
-        raise ValueError("the second argument to cons must be a list")
+        raise ValueError(
+            f"the second argument to cons must be a list, got {schemestr(y)}"
+        )
 
     def _is_null(x):
         if isinstance(x, List): return x == []
-        raise ValueError("null? is defined only for lists")
+        raise ValueError(
+            f"null? is defined only for lists, got {schemestr(x)}"
+        )
 
     def _is_eq(x, y):
         if isinstance(x, Symbol) and isinstance(y, Symbol): return x == y
-        raise ValueError("the arguments to eq? must be non-numeric atoms")
+        raise ValueError(
+            "the arguments to eq? must be symbols, "
+            f"got {schemestr(x)} and {schemestr(y)}"
+        )
 
     return Env({
         "car":   _car,
