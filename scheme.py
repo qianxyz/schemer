@@ -133,24 +133,34 @@ def schemestr(exp: Exp):
     return str(exp)
 
 
-def read_eval_print(source: str, env: Env):
-    """Read source, eval, and print each result."""
+def read_eval_print(source: str, env: Env, keep_going=False, trace=False) -> bool:
+    """Read source, eval, and print each result.
+
+    Returns True if any expression raised an error.
+    """
+    had_error = False
     for exp in parse(source):
-        val = eval(exp, env)
-        if val is not None:
-            print(schemestr(val))
+        if trace: print("; " + schemestr(exp), file=sys.stderr)
+        try:
+            val = eval(exp, env)
+        except Exception as e:
+            print(f"; Error: {e}")
+            had_error = True
+            if not keep_going: break
+        else:
+            if val is not None:
+                print(schemestr(val))
+    return had_error
 
 
-def repl(env: Env, prompt="scheme> "):
+def repl(env: Env, prompt="scheme> ", trace=False):
     while True:
         try:
-            read_eval_print(input(prompt), env)
+            read_eval_print(input(prompt), env, keep_going=True, trace=trace)
         except EOFError: break
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt")
             continue
-        except Exception as e:
-            print(f"Error: {e}")
 
 
 def parse_args():
@@ -163,21 +173,38 @@ def parse_args():
         "-i", "--repl", action="store_true",
         help="drop into REPL after running script",
     )
+    parser.add_argument(
+        "-k", "--keep-going", action="store_true",
+        help="continue on exceptions when running script",
+    )
+    parser.add_argument(
+        "-x", "--trace", action="store_true",
+        help="print each expression before evaluation"
+    )
     return parser.parse_args()
 
 
 def main():
     global_env = standard_env()
+    had_error = False
 
     args = parse_args()
     if args.file is not None:
-        read_eval_print(args.file.read(), global_env)
+        had_error = read_eval_print(
+            args.file.read(), global_env,
+            keep_going=args.keep_going, trace=args.trace
+        )
         if args.repl:
-            repl(global_env)
+            repl(global_env, trace=args.trace)
     elif sys.stdin.isatty() or args.repl:
-        repl(global_env)
+        repl(global_env, trace=args.trace)
     else:
-        read_eval_print(sys.stdin.read(), global_env)
+        had_error = read_eval_print(
+            sys.stdin.read(), global_env,
+            keep_going=args.keep_going, trace=args.trace
+        )
+    if had_error:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
