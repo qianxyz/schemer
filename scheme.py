@@ -126,6 +126,14 @@ def eval(x: Exp, env: Env) -> Exp:
             # in Scheme only #f is false
             if test == "else" or eval(test, env) is not False:
                 return eval(exp, env)
+    elif op == "and":
+        for test in args:
+            if eval(test, env) is False: return False
+        return True
+    elif op == "or":
+        for test in args:
+            if eval(test, env) is not False: return True
+        return False
     elif op == "define":
         symbol, exp = args
         env[symbol] = eval(exp, env)
