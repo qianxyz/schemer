@@ -116,9 +116,9 @@ def standard_env() -> Env:
         "atom?": lambda x: isinstance(x, Atom),
         "eq?":   _is_eq,
 
-        "add1":  lambda n: n + 1,
-        "sub1":  lambda n: n - 1,
-        "zero?": lambda n: n == 0,
+        "add1":    lambda n: n + 1,
+        "sub1":    lambda n: n - 1,
+        "zero?":   lambda n: n == 0,
         "number?": lambda n: isinstance(n, Number) and not isinstance(n, bool)
     })
 
