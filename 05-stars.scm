@@ -1,3 +1,5 @@
+(load "04-nums.scm") ; for +, >, <, =, eqan?
+
 (define rember*
   (lambda (a l)
     (cond
@@ -33,13 +35,6 @@
             (((chuck)))
             (if (a) ((wood chuck)))
             could chuck wood))
-
-; copied over
-(define +
-  (lambda (n m)
-    (cond
-      ((zero? m) n)
-      (else (add1 (+ n (sub1 m)))))))
 
 (define occur*
   (lambda (a l)
@@ -116,35 +111,6 @@
 (leftmost '(((hot) (tuna (and))) cheese))
 ; (leftmost '(((() four)) 17 (seventeen)))
 ; (leftmost '())
-
-; copied over
-(define >
-  (lambda (n m)
-    (cond
-      ((zero? n) #f)
-      ((zero? m) #t)
-      (else (> (sub1 n) (sub1 m))))))
-
-(define <
-  (lambda (n m)
-    (cond
-      ((zero? m) #f)
-      ((zero? n) #t)
-      (else (< (sub1 n) (sub1 m))))))
-
-(define =
-  (lambda (n m)
-    (cond
-      ((> n m) #f)
-      ((< n m) #f)
-      (else #t))))
-
-(define eqan? ; equal atoms and numbers
-  (lambda (a1 a2)
-    (cond
-      ((and (number? a1) (number? a2)) (= a1 a2))
-      ((or (number? a1) (number? a2)) #f)
-      (else (eq? a1 a2)))))
 
 ; (define eqlist?
 ;   (lambda (l1 l2)

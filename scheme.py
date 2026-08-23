@@ -151,6 +151,12 @@ def eval(x: Exp, env: Env) -> Exp:
     elif op == "lambda":
         params, body = args
         return Procedure(params, body, env)
+    # HACK: Load other Scheme sources
+    elif op == "load":
+        file = args[0].replace("\"", "")
+        with open(file) as f:
+            for exp in parse(f.read()):
+                eval(exp, env)
     else:
         proc = eval(x[0], env)
         args = [eval(arg, env) for arg in x[1:]]
