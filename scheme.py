@@ -24,10 +24,14 @@ class Procedure:
 
 def tokenize(source: str) -> list[str]:
     """Convert a Scheme source program into a list of tokens."""
-    comments_stripped = "\n".join(
-        line.partition(";")[0] for line in source.splitlines()
+    no_com = "\n".join(line.partition(";")[0] for line in source.splitlines())
+    return (
+        no_com
+        .replace("(", " ( ")
+        .replace(")", " ) ")
+        .replace("'", " ' ")
+        .split()
     )
-    return comments_stripped.replace("(", " ( ").replace(")", " ) ").split()
 
 
 def parse(source: str) -> Iterator[Exp]:
@@ -53,6 +57,8 @@ def parse_single_exp_from_tokens(tokens: list[str]) -> Exp:
             l.append(parse_single_exp_from_tokens(tokens))
     elif token == ")":
         raise SyntaxError("Unexpected )")
+    elif token == "'":
+        return ["quote", parse_single_exp_from_tokens(tokens)]
     else:
         return atom(token)
 
