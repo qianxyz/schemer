@@ -172,17 +172,21 @@ def read_eval_print(source: str, env: Env, keep_going=False, trace=False) -> boo
     Returns True if any expression raised an error.
     """
     had_error = False
-    for exp in parse(source):
-        if trace: print("; " + schemestr(exp), file=sys.stderr)
-        try:
-            val = eval(exp, env)
-        except Exception as e:
-            print(f"; Error: {e}")
-            had_error = True
-            if not keep_going: break
-        else:
-            if val is not None:
-                print(schemestr(val))
+    try:
+        for exp in parse(source):
+            if trace: print("; " + schemestr(exp), file=sys.stderr)
+            try:
+                val = eval(exp, env)
+            except Exception as e:
+                print(f"; Error: {e}")
+                had_error = True
+                if not keep_going: break
+            else:
+                if val is not None:
+                    print(schemestr(val))
+    except SyntaxError as e:
+        print(f"; Error: {e}")
+        had_error = True
     return had_error
 
 
