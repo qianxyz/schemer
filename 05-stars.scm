@@ -1,38 +1,38 @@
 (define rember*
   (lambda (a l)
     (cond
-      ((null? l) (quote ()))
+      ((null? l) '())
       ((atom? (car l))
        (cond
          ((eq? a (car l)) (rember* a (cdr l)))
          (else (cons (car l) (rember* a (cdr l))))))
       (else (cons (rember* a (car l)) (rember* a (cdr l)))))))
 
-(rember* (quote cup) 
-         (quote ((coffee) cup ((tea) cup)
-                 (and (hick)) cup)))
-(rember* (quote sauce) 
-         (quote (((tomato sauce))
-                 ((bean) sauce)
-                 (and ((flying)) sauce))))
+(rember* 'cup 
+         '((coffee) cup ((tea) cup)
+           (and (hick)) cup))
+(rember* 'sauce 
+         '(((tomato sauce))
+           ((bean) sauce)
+           (and ((flying)) sauce)))
 
 (define insertR*
   (lambda (new old l)
     (cond
-      ((null? l) (quote ()))
+      ((null? l) '())
       ((atom? (car l))
        (cond
          ((eq? old (car l)) (cons old (cons new (insertR* new old (cdr l)))))
          (else (cons (car l) (insertR* new old (cdr l))))))
       (else (cons (insertR* new old (car l)) (insertR* new old (cdr l)))))))
 
-(insertR* (quote roast) (quote chuck)
-          (quote ((how much (wood))
-                  could
-                  ((a (wood) chuck))
-                  (((chuck)))
-                  (if (a) ((wood chuck)))
-                  could chuck wood)))
+(insertR* 'roast 'chuck
+          '((how much (wood))
+            could
+            ((a (wood) chuck))
+            (((chuck)))
+            (if (a) ((wood chuck)))
+            could chuck wood))
 
 ; copied over
 (define +
@@ -51,51 +51,51 @@
          (else (occur* a (cdr l)))))
       (else (+ (occur* a (car l)) (occur* a (cdr l)))))))
 
-(occur* (quote banana)
-        (quote ((banana)
-                (split ((((banana ice)))
-                        (cream (banana))
-                        sherbet))
-                (banana)
-                (bread)
-                (banana brandy))))
+(occur* 'banana
+        '((banana)
+          (split ((((banana ice)))
+                  (cream (banana))
+                  sherbet))
+          (banana)
+          (bread)
+          (banana brandy)))
 
 (define subst*
   (lambda (new old l)
     (cond
-      ((null? l) (quote ()))
+      ((null? l) '())
       ((atom? (car l))
        (cond
          ((eq? old (car l)) (cons new (subst* new old (cdr l))))
          (else (cons (car l) (subst* new old (cdr l))))))
       (else (cons (subst* new old (car l)) (subst* new old (cdr l)))))))
 
-(subst* (quote orange) (quote banana)
-        (quote ((banana)
-                (split ((((banana ice)))
-                        (cream (banana))
-                        sherbet))
-                (banana)
-                (bread)
-                (banana brandy))))
+(subst* 'orange 'banana
+        '((banana)
+          (split ((((banana ice)))
+                  (cream (banana))
+                  sherbet))
+          (banana)
+          (bread)
+          (banana brandy)))
 
 (define insertL*
   (lambda (new old l)
     (cond
-      ((null? l) (quote ()))
+      ((null? l) '())
       ((atom? (car l))
        (cond
          ((eq? old (car l)) (cons new (cons old (insertL* new old (cdr l)))))
          (else (cons (car l) (insertL* new old (cdr l))))))
       (else (cons (insertL* new old (car l)) (insertL* new old (cdr l)))))))
 
-(insertL* (quote pecker) (quote chuck)
-          (quote ((how much (wood))
-                  could
-                  ((a (wood) chuck))
-                  (((chuck)))
-                  (if (a) ((wood chuck)))
-                  could chuck wood)))
+(insertL* 'pecker 'chuck
+          '((how much (wood))
+            could
+            ((a (wood) chuck))
+            (((chuck)))
+            (if (a) ((wood chuck)))
+            could chuck wood))
 
 (define member*
   (lambda (a l)
@@ -104,7 +104,7 @@
       ((atom? (car l)) (or (eq? a (car l)) (member* a (cdr l))))
       (else (or (member* a (car l)) (member* a (cdr l)))))))
 
-(member* (quote chips) (quote ((potato) (chips ((with) fish) (chips)))))
+(member* 'chips '((potato) (chips ((with) fish) (chips))))
 
 (define leftmost
   (lambda (l)
@@ -112,10 +112,10 @@
       ((atom? (car l)) (car l))
       (else (leftmost (car l))))))
 
-(leftmost (quote ((potato) (chips ((with) fish) (chips)))))
-(leftmost (quote (((hot) (tuna (and))) cheese)))
-; (leftmost (quote (((() four)) 17 (seventeen))))
-; (leftmost (quote ()))
+(leftmost '((potato) (chips ((with) fish) (chips))))
+(leftmost '(((hot) (tuna (and))) cheese))
+; (leftmost '(((() four)) 17 (seventeen)))
+; (leftmost '())
 
 ; copied over
 (define >
@@ -174,16 +174,16 @@
       (else (and (eqlist? (car l1) (car l2))
                  (eqlist? (cdr l1) (cdr l2)))))))
 
-(eqlist? (quote (strawberry ice cream))
-         (quote (strawberry ice cream)))
-(eqlist? (quote (strawberry ice cream))
-         (quote (strawberry cream ice)))
-(eqlist? (quote (banana ((split))))
-         (quote ((banana) (split))))
-(eqlist? (quote (beef ((sausage)) (and (soda))))
-         (quote (beef ((salami)) (and (soda)))))
-(eqlist? (quote (beef ((sausage)) (and (soda))))
-         (quote (beef ((sausage)) (and (soda)))))
+(eqlist? '(strawberry ice cream)
+         '(strawberry ice cream))
+(eqlist? '(strawberry ice cream)
+         '(strawberry cream ice))
+(eqlist? '(banana ((split)))
+         '((banana) (split)))
+(eqlist? '(beef ((sausage)) (and (soda)))
+         '(beef ((salami)) (and (soda))))
+(eqlist? '(beef ((sausage)) (and (soda)))
+         '(beef ((sausage)) (and (soda))))
 
 (define equal? ; any S-expression
   (lambda (s1 s2)
@@ -201,21 +201,21 @@
       (else (and (equal? (car l1) (car l2))
                  (eqlist? (cdr l1) (cdr l2))))))) ; can also be equal?
 
-(eqlist? (quote (strawberry ice cream))
-         (quote (strawberry ice cream)))
-(eqlist? (quote (strawberry ice cream))
-         (quote (strawberry cream ice)))
-(eqlist? (quote (banana ((split))))
-         (quote ((banana) (split))))
-(eqlist? (quote (beef ((sausage)) (and (soda))))
-         (quote (beef ((salami)) (and (soda)))))
-(eqlist? (quote (beef ((sausage)) (and (soda))))
-         (quote (beef ((sausage)) (and (soda)))))
+(eqlist? '(strawberry ice cream)
+         '(strawberry ice cream))
+(eqlist? '(strawberry ice cream)
+         '(strawberry cream ice))
+(eqlist? '(banana ((split)))
+         '((banana) (split)))
+(eqlist? '(beef ((sausage)) (and (soda)))
+         '(beef ((salami)) (and (soda))))
+(eqlist? '(beef ((sausage)) (and (soda)))
+         '(beef ((sausage)) (and (soda))))
 
 (define rember ; any S-expression
   (lambda (s l)
     (cond
-      ((null? l) (quote ()))
+      ((null? l) '())
       ((equal? s (car l)) (cdr l))
       (else (cons (car l)
                   (rember s (cdr l)))))))

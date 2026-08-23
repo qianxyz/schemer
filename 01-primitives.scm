@@ -7,59 +7,68 @@
 (quote ())
 (quote (() () () ()))
 
+; '
+'atom
+'1942
+'(atom)
+'(atom turkey or)
+'((atom turkey) or)
+'()
+'(() () () ())
+
 ; car
-(car (quote (a b c)))
-(car (quote ((a b c) x y z)))
-(car (quote hotdog)) ; Error
-(car (quote ())) ; Error
-(car (quote (((hotdogs)) (and) (pickle) relish)))
-(car (car (quote (((hotdogs)) (and)))))
+(car '(a b c))
+(car '((a b c) x y z))
+(car 'hotdog) ; Error
+(car '()) ; Error
+(car '(((hotdogs)) (and) (pickle) relish))
+(car (car '(((hotdogs)) (and))))
 
 ; cdr
-(cdr (quote (a b c)))
-(cdr (quote ((a b c) x y z)))
-(cdr (quote (hamburger)))
-(cdr (quote ((x) t r)))
-(cdr (quote hotdogs)) ; Error
-(cdr (quote ())) ; Error
+(cdr '(a b c))
+(cdr '((a b c) x y z))
+(cdr '(hamburger))
+(cdr '((x) t r))
+(cdr 'hotdogs) ; Error
+(cdr '()) ; Error
 
-(car (cdr (quote ((b) (x y) ((c))))))
-(cdr (cdr (quote ((b) (x y) ((c))))))
-(cdr (car (quote (a (b (c)) d)))) ; Error
+(car (cdr '((b) (x y) ((c)))))
+(cdr (cdr '((b) (x y) ((c)))))
+(cdr (car '(a (b (c)) d))) ; Error
 
 ; cons
-(cons (quote peanut) (quote (butter and jelly)))
-(cons (quote (banana and)) (quote (peanut butter and jelly)))
-(cons (quote ((help) this)) (quote (is very ((hard) to learn))))
-(cons (quote (a b (c))) (quote ()))
-(cons (quote ((a b c))) (quote b)) ; Error
-(cons (quote a) (quote b)) ; Error
+(cons 'peanut '(butter and jelly))
+(cons '(banana and) '(peanut butter and jelly))
+(cons '((help) this) '(is very ((hard) to learn)))
+(cons '(a b (c)) '())
+(cons '((a b c)) 'b) ; Error
+(cons 'a 'b) ; Error
 
-(cons (quote a) (car (quote ((b) c d))))
-(cons (quote a) (cdr (quote ((b) c d))))
+(cons 'a (car '((b) c d)))
+(cons 'a (cdr '((b) c d)))
 
 ; null?
-(null? (quote ()))
-(null? (quote (a b c)))
-(null? (quote spaghetti)) ; Error
+(null? '())
+(null? '(a b c))
+(null? 'spaghetti) ; Error
 
 ; atom?
-(atom? (quote Harry))
-(atom? (quote (Harry had a heap of apples)))
-(atom? (car (quote (Harry had a heap of apples))))
-(atom? (cdr (quote (Harry had a heap of apples))))
-(atom? (cdr (quote (Harry))))
-(atom? (car (cdr (quote (swing low sweet cherry oat)))))
-(atom? (car (cdr (quote (swing (low sweet) cherry oat)))))
+(atom? 'Harry)
+(atom? '(Harry had a heap of apples))
+(atom? (car '(Harry had a heap of apples)))
+(atom? (cdr '(Harry had a heap of apples)))
+(atom? (cdr '(Harry)))
+(atom? (car (cdr '(swing low sweet cherry oat))))
+(atom? (car (cdr '(swing (low sweet) cherry oat))))
 
 ; eq?
-(eq? (quote Harry) (quote Harry))
-(eq? (quote margarine) (quote butter))
-(eq? (quote ()) (quote (strawberry))) ; Error
+(eq? 'Harry 'Harry)
+(eq? 'margarine 'butter)
+(eq? '() '(strawberry)) ; Error
 (eq? 6 7) ; Error
 
-(eq? (car (quote (Mary had a little lamb chop))) (quote Mary))
-(eq? (cdr (quote (soured milk))) (quote milk)) ; Error
+(eq? (car '(Mary had a little lamb chop)) 'Mary)
+(eq? (cdr '(soured milk)) 'milk) ; Error
 
-(define l (quote (beans beans we need jelly beans)))
+(define l '(beans beans we need jelly beans))
 (eq? (car l) (car (cdr l)))
