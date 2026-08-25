@@ -230,6 +230,8 @@ def parse_args():
 
 
 def main():
+    sys.setrecursionlimit(150_000)  # for deeply recursive examples
+
     global_env = standard_env()
     had_error = False
 
