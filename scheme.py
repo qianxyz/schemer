@@ -119,7 +119,9 @@ def standard_env() -> Env:
         "add1":    lambda n: n + 1,
         "sub1":    lambda n: n - 1,
         "zero?":   lambda n: n == 0,
-        "number?": lambda n: isinstance(n, Number) and not isinstance(n, bool)
+        "number?": lambda n: isinstance(n, Number) and not isinstance(n, bool),
+
+        "list": lambda *x: list(x),
     })
 
 
