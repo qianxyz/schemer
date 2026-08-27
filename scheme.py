@@ -169,7 +169,7 @@ def schemestr(exp: Exp):
     """Convert a Scheme expression to a printable Python string."""
     if isinstance(exp, List):
         return "(" + " ".join(schemestr(x) for x in exp) + ")"
-    if isinstance(exp, Procedure):  return "#<procedure>"
+    if callable(exp): return "#<procedure>"
     if exp is True: return "#t"
     if exp is False: return "#f"
     return str(exp)
