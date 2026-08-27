@@ -100,3 +100,208 @@
 ;   then (last-try '()) evaluates to #f (and stops), contradiction
 ; if (will-stop? last-try) = #t:
 ;   then (last-try '()) evaluates to (eternity '()), contradiction
+
+; (define length
+;   (lambda (lat)
+;     (cond
+;       ((null? lat) 0)
+;       (else (add1 (length (cdr lat)))))))
+; note that the recursive function must be given a name,
+; but in lambda calculus all functions are anonymous.
+; how to achieve recursion without `define`?
+
+; this only works for empty list
+; (define length0
+(lambda (l)
+  (cond
+    ((null? l) 0)
+    (else (add1 (eternity (cdr l))))))
+; )
+
+; s/eternity/length0 to make length<=1
+(lambda (l)
+  (cond
+    ((null? l) 0)
+    (else (add1
+      ( ; length0
+       (lambda (l)
+         (cond
+           ((null? l) 0)
+           (else (add1 (eternity (cdr l))))))
+       (cdr l))))))
+
+; s/eternity/length0 again to make length<=2
+(lambda (l)
+  (cond
+    ((null? l) 0)
+    (else (add1
+      ((lambda (l)
+         (cond
+           ((null? l) 0)
+           (else (add1
+             ((lambda (l)
+                (cond
+                  ((null? l) 0)
+                  (else (add1 (eternity (cdr l))))))
+              (cdr l))))))
+       (cdr l))))))
+
+; rewrite length0 by extracting eternity
+((lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l)))))))
+ eternity)
+
+; substitute eternity with the new length0 to get length<=1
+((lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l)))))))
+ ((lambda (length)
+    (lambda (l)
+      (cond
+        ((null? l) 0)
+        (else (add1 (length (cdr l)))))))
+  eternity))
+
+; substitute eternity with the new length0 to get length<=2
+((lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l)))))))
+ ((lambda (length)
+    (lambda (l)
+      (cond
+        ((null? l) 0)
+        (else (add1 (length (cdr l)))))))
+  ((lambda (length)
+     (lambda (l)
+       (cond
+         ((null? l) 0)
+         (else (add1 (length (cdr l)))))))
+   eternity)))
+
+; this is `eternity` piped into some function repeatedly
+; calling it `mk-length`, rewrite length0
+((lambda (mk-length)
+   (mk-length eternity))
+ (lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l))))))))
+
+; length<=1 we apply mk-length again
+((lambda (mk-length)
+   (mk-length
+     (mk-length eternity)))
+ (lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l))))))))
+
+; length<=2 we apply mk-length again
+((lambda (mk-length)
+   (mk-length
+     (mk-length
+       (mk-length eternity))))
+ (lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l))))))))
+
+; back to length0
+; since we don't care about the else branch
+; we can swap eternity out by mk-length itself
+; and for the inner lambda we rename length -> mk-length formally
+((lambda (mk-length)
+   (mk-length mk-length))
+ (lambda (mk-length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (mk-length (cdr l))))))))
+
+; length<=1 is (mk-length (mk-length eternity))
+; putting the argument to the inner lambda body
+((lambda (mk-length)
+   (mk-length mk-length))
+ (lambda (mk-length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 ((mk-length eternity) (cdr l))))))))
+
+(((lambda (mk-length)
+    (mk-length mk-length))
+  (lambda (mk-length)
+    (lambda (l)
+      (cond
+        ((null? l) 0)
+        (else (add1 ((mk-length eternity) (cdr l))))))))
+ '(apple))
+
+; now instead of eternity just keep passing mk-length
+((lambda (mk-length)
+   (mk-length mk-length))
+ (lambda (mk-length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 ((mk-length mk-length) (cdr l))))))))
+
+; extract (mk-length mk-length) to a lambda
+; also since (mk-length mk-length) is a function
+; we write it as (lambda (x) ((mk-length mk-length) x))
+((lambda (mk-length)
+   (mk-length mk-length))
+ (lambda (mk-length)
+   (
+; note how this part looks like length
+    (lambda (length)
+      (lambda (l)
+        (cond
+          ((null? l) 0)
+          (else (add1 (length (cdr l)))))))
+;
+    (lambda (x) ((mk-length mk-length) x)))))
+
+; extract the middle part into a lambda
+((lambda (le)
+   ((lambda (mk-length)
+      (mk-length mk-length))
+    (lambda (mk-length)
+      (le (lambda (x) ((mk-length mk-length) x))))))
+;
+ (lambda (length)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (add1 (length (cdr l))))))))
+
+; so the first lambda function
+(lambda (le)
+  ((lambda (mk-length)
+     (mk-length mk-length))
+   (lambda (mk-length)
+     (le (lambda (x) ((mk-length mk-length) x))))))
+; when we supply the ordinary function
+; (lambda (length)
+;   (lambda (l)
+;     (cond
+;       ((null? l) 0)
+;       (else (add1 (length (cdr l)))))))
+; turns it into a recursive function
+
+; this is defined as the Y combinator
+(define Y
+  (lambda (le)
+    ((lambda (f) (f f))
+     (lambda (f)
+       (le (lambda (x) ((f f) x)))))))
