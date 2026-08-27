@@ -16,7 +16,7 @@ class Procedure:
     "A user-defined Scheme procedure."
     def __init__(self, params: List, body: Exp, env: Env):
         self.params, self.body, self.env = params, body, env
-    def __call__(self, *args): 
+    def __call__(self, *args):
         bindings = dict(zip(self.params, args))
         local_env = self.env.new_child(bindings)
         return eval(self.body, local_env)
@@ -169,6 +169,7 @@ def schemestr(exp: Exp):
     """Convert a Scheme expression to a printable Python string."""
     if isinstance(exp, List):
         return "(" + " ".join(schemestr(x) for x in exp) + ")"
+    if isinstance(exp, Procedure):  return "#<procedure>"
     if exp is True: return "#t"
     if exp is False: return "#f"
     return str(exp)
