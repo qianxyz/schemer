@@ -114,7 +114,7 @@ def standard_env() -> Env:
         "cdr":   _cdr,
         "cons":  _cons,
         "null?": _is_null,
-        "atom?": lambda x: isinstance(x, Atom),
+        "atom?": lambda x: not isinstance(x, List),
         "eq?":   _is_eq,
 
         "add1":    lambda n: n + 1,
