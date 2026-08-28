@@ -102,9 +102,10 @@ def standard_env() -> Env:
         )
 
     def _is_eq(x, y):
-        if isinstance(x, Symbol) and isinstance(y, Symbol): return x == y
+        is_non_numeric_atom = lambda x: isinstance(x, Symbol | bool)
+        if is_non_numeric_atom(x) and is_non_numeric_atom(y): return x == y
         raise ValueError(
-            "the arguments to eq? must be symbols, "
+            "the arguments to eq? must be non-numeric atoms, "
             f"got {schemestr(x)} and {schemestr(y)}"
         )
 
