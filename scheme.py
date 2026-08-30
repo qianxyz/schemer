@@ -24,14 +24,8 @@ class Procedure:
 
 def tokenize(source: str) -> list[str]:
     """Convert a Scheme source program into a list of tokens."""
-    no_com = "\n".join(line.partition(";")[0] for line in source.splitlines())
-    return (
-        no_com
-        .replace("(", " ( ")
-        .replace(")", " ) ")
-        .replace("'", " ' ")
-        .split()
-    )
+    comments_stripped = "\n".join(line.partition(";")[0] for line in source.splitlines())
+    return comments_stripped.replace("(", " ( ").replace(")", " ) ").replace("'", " ' ").split()
 
 
 def parse(source: str) -> Iterator[Exp]:
@@ -48,13 +42,12 @@ def parse_single_exp_from_tokens(tokens: list[str]) -> Exp:
     token = tokens.pop(0)
     if token == "(":
         l = []
-        while True:
-            if not tokens:
-                raise SyntaxError("Unexpected EOF")
+        while tokens:
             if tokens[0] == ")":
                 tokens.pop(0)  # pop off ")"
                 return l
             l.append(parse_single_exp_from_tokens(tokens))
+        raise SyntaxError("Unexpected EOF")
     elif token == ")":
         raise SyntaxError("Unexpected )")
     elif token == "'":
@@ -79,31 +72,22 @@ def standard_env() -> Env:
 
     def _car(x):
         if isinstance(x, List) and x: return x[0]
-        raise ValueError(
-            f"car is defined only for non-empty lists, got {schemestr(x)}"
-        )
+        raise ValueError(f"car is defined only for non-empty lists, got {schemestr(x)}")
 
     def _cdr(x):
         if isinstance(x, List) and x: return x[1:]
-        raise ValueError(
-            f"cdr is defined only for non-empty lists, got {schemestr(x)}"
-        )
+        raise ValueError(f"cdr is defined only for non-empty lists, got {schemestr(x)}")
 
     def _cons(x, y):
         if isinstance(y, List): return [x] + y
-        raise ValueError(
-            f"the second argument to cons must be a list, got {schemestr(y)}"
-        )
+        raise ValueError(f"the second argument to cons must be a list, got {schemestr(y)}")
 
     def _is_null(x):
         if isinstance(x, List): return x == []
-        raise ValueError(
-            f"null? is defined only for lists, got {schemestr(x)}"
-        )
+        raise ValueError(f"null? is defined only for lists, got {schemestr(x)}")
 
     def _is_eq(x, y):
-        is_non_numeric_atom = lambda x: isinstance(x, Symbol | bool)
-        if is_non_numeric_atom(x) and is_non_numeric_atom(y): return x == y
+        if isinstance(x, Symbol | bool) and isinstance(y, Symbol | bool): return x == y
         raise ValueError(
             "the arguments to eq? must be non-numeric atoms, "
             f"got {schemestr(x)} and {schemestr(y)}"
