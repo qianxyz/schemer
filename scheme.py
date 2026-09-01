@@ -197,8 +197,8 @@ def repl(env: Env, prompt="scheme> ", trace=False):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "file", nargs="?", type=argparse.FileType("r"),
-        help="the Scheme source file to load",
+        "file", nargs="?",
+        help="the Scheme source file to load; - for stdin",
     )
     parser.add_argument(
         "-i", "--repl", action="store_true",
@@ -223,8 +223,13 @@ def main():
 
     args = parse_args()
     if args.file is not None:
+        if args.file == "-":
+            source = sys.stdin.read()
+        else:
+            with open(args.file) as f:
+                source = f.read()
         had_error = read_eval_print(
-            args.file.read(), global_env,
+            source, global_env,
             keep_going=args.keep_going, trace=args.trace
         )
         if args.repl:
