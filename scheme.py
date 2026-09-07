@@ -188,7 +188,9 @@ def repl(env: Env, prompt="scheme> ", trace=False):
     while True:
         try:
             read_eval_print(input(prompt), env, keep_going=True, trace=trace)
-        except EOFError: break
+        except EOFError:
+            print()
+            break
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt")
             continue
