@@ -17,9 +17,23 @@ data SExp
 parseString :: Parser SExp
 parseString = do
   _ <- char '"'
-  x <- many (noneOf "\"")
+  x <- many stringChar
   _ <- char '"'
   return $ String x
+
+-- Parse a single character in a string, handling escape sequences.
+stringChar :: Parser Char
+stringChar = noneOf "\\\"" <|> (char '\\' >> escapeSequence)
+
+escapeSequence :: Parser Char
+escapeSequence =
+  -- (<$) :: a -> f b -> f a
+  -- (<$) = fmap . const  -- i.e. x <$ fb = fmap (\_ -> x) fb
+  char '"'
+    <|> char '\\'
+    <|> ('\n' <$ char 'n')
+    <|> ('\r' <$ char 'r')
+    <|> ('\t' <$ char 't')
 
 parseAtom :: Parser SExp
 parseAtom = do
