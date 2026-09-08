@@ -34,8 +34,15 @@ parseAtom = do
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
+-- could also be written as:
+-- parseNumber = liftM (Number . read) $ many1 digit
+-- parseNumber = fmap (Number . read) $ many1 digit
+-- parseNumber = do
+--   numStr <- many1 digit
+--   return $ Number (read numStr)
+-- parseNumber = many1 digit >>= \numStr -> return $ Number (read numStr)
 parseNumber :: Parser SExp
-parseNumber = fmap (Number . read) $ many1 digit
+parseNumber = Number . read <$> many1 digit
 
 parseExpr :: Parser SExp
 parseExpr =
