@@ -27,10 +27,10 @@ stringChar = noneOf "\\\"" <|> (char '\\' >> escapeSequence)
 
 escapeSequence :: Parser Char
 escapeSequence =
-  -- (<$) :: a -> f b -> f a
-  -- (<$) = fmap . const  -- i.e. x <$ fb = fmap (\_ -> x) fb
   char '"'
     <|> char '\\'
+    -- (<$) :: a -> f b -> f a
+    -- (<$) = fmap . const  -- i.e. x <$ fb = fmap (\_ -> x) fb
     <|> ('\n' <$ char 'n')
     <|> ('\r' <$ char 'r')
     <|> ('\t' <$ char 't')
@@ -48,6 +48,7 @@ parseAtom = do
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
+parseNumber :: Parser SExp
 -- could also be written as:
 -- parseNumber = liftM (Number . read) $ many1 digit
 -- parseNumber = fmap (Number . read) $ many1 digit
@@ -55,7 +56,6 @@ symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 --   numStr <- many1 digit
 --   return $ Number (read numStr)
 -- parseNumber = many1 digit >>= \numStr -> return $ Number (read numStr)
-parseNumber :: Parser SExp
 parseNumber = Number . read <$> many1 digit
 
 parseExpr :: Parser SExp
