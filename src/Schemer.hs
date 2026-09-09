@@ -1,4 +1,4 @@
-module Schemer (SExp, parseExpr, readExpr) where
+module Schemer where
 
 import Text.ParserCombinators.Parsec hiding (spaces)
 
@@ -11,7 +11,7 @@ data SExp
   | -- A dotted list like (a b . c) is a list that ends with c instead of nil.
     -- It can be constructed e.g. with `(cons a (cons b c))`.
     DottedList [SExp] SExp
-  deriving (Show)
+  deriving (Show, Eq)
 
 parseString :: Parser SExp
 parseString = do
