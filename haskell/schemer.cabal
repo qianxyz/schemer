@@ -53,6 +53,14 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+library
+    import:           warnings
+    exposed-modules:  Schemer
+    build-depends:    base ^>=4.20.2.0,
+                      parsec
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
 executable schemer
     -- Import common warning flags.
     import:           warnings
@@ -68,10 +76,22 @@ executable schemer
 
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.20.2.0,
-                      parsec
+                      parsec,
+                      schemer
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
+    default-language: Haskell2010
+
+test-suite spec
+    import:           warnings
+    type:             exitcode-stdio-1.0
+    main-is:          Spec.hs
+    build-depends:    base ^>=4.20.2.0,
+                      hspec,
+                      parsec,
+                      schemer
+    hs-source-dirs:   test
     default-language: Haskell2010
