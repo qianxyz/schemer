@@ -9,6 +9,7 @@ data SExp
   | String String
   | Bool Bool
   | Char Char
+  | Float Double
   | List [SExp]
   | -- A dotted list like (a b . c) is a list that ends with c instead of nil.
     -- It can be constructed e.g. with `(cons a (cons b c))`.
@@ -46,7 +47,12 @@ symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 -- Parse a decimal number (base 10) without any prefix.
 parseDec :: Parser SExp
-parseDec = Number . read <$> many1 digit
+parseDec = do
+  wholePart <- many1 digit
+  fracPart <- optionMaybe (char '.' >> many1 digit)
+  return $ case fracPart of
+    Nothing -> Number (read wholePart)
+    Just dec -> Float (read (wholePart ++ "." ++ dec))
 
 -- Parse a #-prefixed expression.
 parseHash :: Parser SExp

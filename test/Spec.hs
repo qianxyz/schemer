@@ -43,3 +43,12 @@ main = hspec $ do
       parse parseExpr "" "#\\Space" `shouldBe` Right (Char ' ')
     it "rejects an unknown character name" $ do
       parse parseExpr "" "#\\ab" `shouldSatisfy` isLeft
+
+    it "parses a decimal float" $ do
+      parse parseExpr "" "1.5" `shouldBe` Right (Float 1.5)
+    it "parses a #d decimal float" $ do
+      parse parseExpr "" "#d1.5" `shouldBe` Right (Float 1.5)
+    it "rejects a float with no integer part" $ do
+      parse parseExpr "" ".5" `shouldSatisfy` isLeft
+    it "rejects a float with no fractional part" $ do
+      parse parseExpr "" "1." `shouldSatisfy` isLeft
