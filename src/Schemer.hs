@@ -1,6 +1,6 @@
 module Schemer where
 
-import Data.Char (digitToInt)
+import Data.Char (digitToInt, toLower)
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 data SExp
@@ -80,10 +80,11 @@ namedOrSingleLetter :: Parser Char
 namedOrSingleLetter = do
   str <- many1 letter
   case str of
-    "space" -> return ' '
-    "newline" -> return '\n'
     [c] -> return c
-    _ -> fail $ "Unknown character literal: " ++ str
+    _ -> case map toLower str of
+      "space" -> return ' '
+      "newline" -> return '\n'
+      _ -> fail $ "Unknown character literal: " ++ str
 
 parseExpr :: Parser SExp
 parseExpr =

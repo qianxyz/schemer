@@ -33,9 +33,13 @@ main = hspec $ do
     it "parses a hexadecimal number" $ do
       parse parseExpr "" "#xA" `shouldBe` Right (Number 10)
 
-    it "parses a character literal" $ do
+    it "parses a lowercase character literal" $ do
       parse parseExpr "" "#\\a" `shouldBe` Right (Char 'a')
+    it "parses an uppercase character literal" $ do
+      parse parseExpr "" "#\\A" `shouldBe` Right (Char 'A')
     it "parses a named character literal" $ do
       parse parseExpr "" "#\\space" `shouldBe` Right (Char ' ')
+    it "parses a named character literal with mixed case" $ do
+      parse parseExpr "" "#\\Space" `shouldBe` Right (Char ' ')
     it "rejects an unknown character name" $ do
       parse parseExpr "" "#\\ab" `shouldSatisfy` isLeft
