@@ -29,11 +29,9 @@ escapeSequence :: Parser Char
 escapeSequence =
   char '"'
     <|> char '\\'
-    -- (<$) :: a -> f b -> f a
-    -- (<$) = fmap . const  -- i.e. x <$ fb = fmap (\_ -> x) fb
-    <|> ('\n' <$ char 'n')
-    <|> ('\r' <$ char 'r')
-    <|> ('\t' <$ char 't')
+    <|> (char 'n' >> return '\n')
+    <|> (char 'r' >> return '\r')
+    <|> (char 't' >> return '\t')
 
 parseAtom :: Parser SExp
 parseAtom = do
@@ -45,9 +43,11 @@ parseAtom = do
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
+-- Parse a decimal number (base 10) without any prefix.
 parseDec :: Parser SExp
 parseDec = Number . read <$> many1 digit
 
+-- Parse a number with a base prefix (#b, #o, #d, #x) or a boolean (#t, #f).
 parseHash :: Parser SExp
 parseHash =
   char '#'
