@@ -8,6 +8,7 @@ data SExp
   | Number Integer
   | String String
   | Bool Bool
+  | Char Char
   | List [SExp]
   | -- A dotted list like (a b . c) is a list that ends with c instead of nil.
     -- It can be constructed e.g. with `(cons a (cons b c))`.
@@ -47,7 +48,7 @@ symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 parseDec :: Parser SExp
 parseDec = Number . read <$> many1 digit
 
--- Parse a number with a base prefix (#b, #o, #d, #x) or a boolean (#t, #f).
+-- Parse a #-prefixed expression.
 parseHash :: Parser SExp
 parseHash =
   char '#'
@@ -57,6 +58,7 @@ parseHash =
            <|> (char 'o' >> parseOct)
            <|> (char 'd' >> parseDec)
            <|> (char 'x' >> parseHex)
+           <|> (char '\\' >> parseChar)
        )
 
 stringToBaseInt :: Integer -> String -> Integer
@@ -70,6 +72,18 @@ parseOct = Number . stringToBaseInt 8 <$> many1 octDigit
 
 parseHex :: Parser SExp
 parseHex = Number . stringToBaseInt 16 <$> many1 hexDigit
+
+parseChar :: Parser SExp
+parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
+
+namedOrSingleLetter :: Parser Char
+namedOrSingleLetter = do
+  str <- many1 letter
+  case str of
+    "space" -> return ' '
+    "newline" -> return '\n'
+    [c] -> return c
+    _ -> fail $ "Unknown character literal: " ++ str
 
 parseExpr :: Parser SExp
 parseExpr =
