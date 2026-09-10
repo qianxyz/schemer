@@ -1,5 +1,6 @@
 module Schemer where
 
+import Data.Char (digitToInt)
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 data SExp
@@ -39,29 +40,43 @@ parseAtom = do
   first <- letter <|> symbol
   rest <- many (letter <|> digit <|> symbol)
   let atom = first : rest
-  return $ case atom of
-    "#t" -> Bool True
-    "#f" -> Bool False
-    _ -> Atom atom
+  return $ Atom atom
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
-parseNumber :: Parser SExp
--- could also be written as:
--- parseNumber = liftM (Number . read) $ many1 digit
--- parseNumber = fmap (Number . read) $ many1 digit
--- parseNumber = do
---   numStr <- many1 digit
---   return $ Number (read numStr)
--- parseNumber = many1 digit >>= \numStr -> return $ Number (read numStr)
-parseNumber = Number . read <$> many1 digit
+parseDec :: Parser SExp
+parseDec = Number . read <$> many1 digit
+
+parseHash :: Parser SExp
+parseHash =
+  char '#'
+    >> ( (char 't' >> return (Bool True))
+           <|> (char 'f' >> return (Bool False))
+           <|> (char 'b' >> parseBin)
+           <|> (char 'o' >> parseOct)
+           <|> (char 'd' >> parseDec)
+           <|> (char 'x' >> parseHex)
+       )
+
+stringToBaseInt :: Integer -> String -> Integer
+stringToBaseInt base = foldl' (\acc c -> acc * base + toInteger (digitToInt c)) 0
+
+parseBin :: Parser SExp
+parseBin = Number . stringToBaseInt 2 <$> many1 (oneOf "01")
+
+parseOct :: Parser SExp
+parseOct = Number . stringToBaseInt 8 <$> many1 octDigit
+
+parseHex :: Parser SExp
+parseHex = Number . stringToBaseInt 16 <$> many1 hexDigit
 
 parseExpr :: Parser SExp
 parseExpr =
   parseAtom
     <|> parseString
-    <|> parseNumber
+    <|> parseDec
+    <|> parseHash
 
 -- Parsec's `spaces = skipMany space` allows zero spaces,
 -- so we hide that and define our own here.
