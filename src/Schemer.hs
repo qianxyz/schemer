@@ -56,16 +56,15 @@ parseDec = do
 
 -- Parse a #-prefixed expression.
 parseHash :: Parser SExp
-parseHash =
-  char '#'
-    >> ( (char 't' >> return (Bool True))
-           <|> (char 'f' >> return (Bool False))
-           <|> (char 'b' >> parseBin)
-           <|> (char 'o' >> parseOct)
-           <|> (char 'd' >> parseDec)
-           <|> (char 'x' >> parseHex)
-           <|> (char '\\' >> parseChar)
-       )
+parseHash = do
+  _ <- char '#'
+  (char 't' >> return (Bool True))
+    <|> (char 'f' >> return (Bool False))
+    <|> (char 'b' >> parseBin)
+    <|> (char 'o' >> parseOct)
+    <|> (char 'd' >> parseDec)
+    <|> (char 'x' >> parseHex)
+    <|> (char '\\' >> parseChar)
 
 stringToBaseInt :: Integer -> String -> Integer
 stringToBaseInt base = foldl' (\acc c -> acc * base + toInteger (digitToInt c)) 0
