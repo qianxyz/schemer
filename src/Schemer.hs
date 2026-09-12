@@ -1,15 +1,17 @@
 module Schemer where
 
 import Data.Char (digitToInt, toLower)
+import Data.Complex (Complex ((:+)))
+import Data.Ratio (denominator, numerator, (%))
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 data SExp
   = Atom String
-  | Number Integer
+  | Real RealNum
+  | Complex (Complex RealNum)
   | String String
   | Bool Bool
   | Char Char
-  | Float Double
   | List [SExp]
   | -- A dotted list like (a b . c) is a list that ends with c instead of nil.
     -- It can be constructed e.g. with `(cons a (cons b c))`.
@@ -45,14 +47,121 @@ parseAtom = do
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
--- Parse a decimal number (base 10) without any prefix.
-parseDec :: Parser SExp
-parseDec = do
-  wholePart <- many1 digit
-  fracPart <- optionMaybe (char '.' >> many1 digit)
-  return $ case fracPart of
-    Nothing -> Number (read wholePart)
-    Just dec -> Float (read (wholePart ++ "." ++ dec))
+-- <complex R> ::=      +/- [<ureal R>] i
+--   | [+/-] <ureal R> [+/- [<ureal R>] i]
+parseComplex :: Radix -> Parser SExp
+-- TODO: Parse real first so that the ordinary case won't need to backtrack
+parseComplex radix = try imgOnly <|> realAndImg
+  where
+    imgOnly = do
+      img <- parseImgPart radix
+      return $ Complex (0 :+ img)
+    realAndImg = do
+      sign <- option '+' (oneOf "+-")
+      ureal <- parseUReal radix
+      let real = if sign == '+' then ureal else negate ureal
+      img <- optionMaybe $ parseImgPart radix
+      return $ case img of
+        Nothing -> Real real
+        Just i -> Complex (real :+ i)
+
+-- Parse +/- [<ureal R>] i.
+parseImgPart :: Radix -> Parser RealNum
+parseImgPart radix = do
+  sign <- oneOf "+-"
+  mureal <- option (Int 1) (parseUReal radix)
+  _ <- char 'i'
+  return $ if sign == '+' then mureal else negate mureal
+
+data RealNum
+  = Int Integer
+  | Rational Rational
+  | Float Double
+  deriving (Show, Eq)
+
+instance Num RealNum where
+  fromInteger = Int
+  (Int a) + (Int b) = Int (a + b)
+  (Int a) + (Rational b) = Rational (fromInteger a + b)
+  (Int a) + (Float b) = Float (fromInteger a + b)
+  (Rational a) + (Int b) = Rational (a + fromInteger b)
+  (Rational a) + (Rational b) = Rational (a + b)
+  (Rational a) + (Float b) = Float (fromRational a + b)
+  (Float a) + (Int b) = Float (a + fromInteger b)
+  (Float a) + (Rational b) = Float (a + fromRational b)
+  (Float a) + (Float b) = Float (a + b)
+  (Int a) * (Int b) = Int (a * b)
+  (Int a) * (Rational b) = Rational (fromInteger a * b)
+  (Int a) * (Float b) = Float (fromInteger a * b)
+  (Rational a) * (Int b) = Rational (a * fromInteger b)
+  (Rational a) * (Rational b) = Rational (a * b)
+  (Rational a) * (Float b) = Float (fromRational a * b)
+  (Float a) * (Int b) = Float (a * fromInteger b)
+  (Float a) * (Rational b) = Float (a * fromRational b)
+  (Float a) * (Float b) = Float (a * b)
+  abs (Int a) = Int (abs a)
+  abs (Rational a) = Rational (abs a)
+  abs (Float a) = Float (abs a)
+  signum (Int a) = Int (signum a)
+  signum (Rational a) = Rational (signum a)
+  signum (Float a) = Float (signum a)
+  negate (Int a) = Int (negate a)
+  negate (Rational a) = Rational (negate a)
+  negate (Float a) = Float (negate a)
+
+instance Fractional RealNum where
+  fromRational = Rational
+  (Int a) / (Int b) = Rational (a % b)
+  (Int a) / (Rational b) = Rational (fromInteger a / b)
+  (Int a) / (Float b) = Float (fromInteger a / b)
+  (Rational a) / (Int b) = Rational (a / fromInteger b)
+  (Rational a) / (Rational b) = Rational (a / b)
+  (Rational a) / (Float b) = Float (fromRational a / b)
+  (Float a) / (Int b) = Float (a / fromInteger b)
+  (Float a) / (Rational b) = Float (a / fromRational b)
+  (Float a) / (Float b) = Float (a / b)
+
+-- Parse <uint R>[/<uint R>]. If R = D also parse <uint R>.<uint R>.
+parseUReal :: Radix -> Parser RealNum
+parseUReal radix = do
+  first <- parseDigitString radix
+  msep <- optionMaybe $ if radix == D then oneOf "/." else char '/'
+  let toInt = stringToBaseInt radix
+  case msep of
+    Nothing -> return $ Int (toInt first)
+    Just sep -> do
+      second <- parseDigitString radix
+      case sep of
+        '.' -> return $ Float (read (first ++ "." ++ second))
+        _ -> makeRational (toInt first) (toInt second)
+      where
+        makeRational _ 0 = fail "Denominator cannot be zero"
+        makeRational num denom =
+          return $
+            let r = num % denom
+             in if denominator r == 1 then Int (numerator r) else Rational r
+
+data Radix = B | O | D | X deriving (Show, Eq)
+
+parseDigit :: Radix -> Parser Char
+parseDigit B = oneOf "01"
+parseDigit O = octDigit
+parseDigit D = digit
+parseDigit X = hexDigit
+
+radixToBase :: Radix -> Integer
+radixToBase B = 2
+radixToBase O = 8
+radixToBase D = 10
+radixToBase X = 16
+
+stringToBaseInt :: Radix -> String -> Integer
+stringToBaseInt D = read
+stringToBaseInt radix =
+  foldl' (\acc c -> acc * radixToBase radix + toInteger (digitToInt c)) 0
+
+parseDigitString :: Radix -> Parser String
+parseDigitString = many1 . parseDigit
 
 -- Parse a #-prefixed expression.
 parseHash :: Parser SExp
@@ -60,23 +169,11 @@ parseHash = do
   _ <- char '#'
   (char 't' >> return (Bool True))
     <|> (char 'f' >> return (Bool False))
-    <|> (char 'b' >> parseBin)
-    <|> (char 'o' >> parseOct)
-    <|> (char 'd' >> parseDec)
-    <|> (char 'x' >> parseHex)
+    <|> (char 'b' >> parseComplex B)
+    <|> (char 'o' >> parseComplex O)
+    <|> (char 'd' >> parseComplex D)
+    <|> (char 'x' >> parseComplex X)
     <|> (char '\\' >> parseChar)
-
-stringToBaseInt :: Integer -> String -> Integer
-stringToBaseInt base = foldl' (\acc c -> acc * base + toInteger (digitToInt c)) 0
-
-parseBin :: Parser SExp
-parseBin = Number . stringToBaseInt 2 <$> many1 (oneOf "01")
-
-parseOct :: Parser SExp
-parseOct = Number . stringToBaseInt 8 <$> many1 octDigit
-
-parseHex :: Parser SExp
-parseHex = Number . stringToBaseInt 16 <$> many1 hexDigit
 
 parseChar :: Parser SExp
 parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
@@ -93,9 +190,9 @@ namedOrSingleLetter = do
 
 parseExpr :: Parser SExp
 parseExpr =
-  parseAtom
+  try (parseComplex D)
+    <|> parseAtom
     <|> parseString
-    <|> parseDec
     <|> parseHash
 
 -- Parsec's `spaces = skipMany space` allows zero spaces,
