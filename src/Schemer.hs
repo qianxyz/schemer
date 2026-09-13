@@ -79,47 +79,68 @@ data RealNum
   | Float Double
   deriving (Show, Eq)
 
+-- TODO: Implement RealFloat for RealNum
+
+isFloat :: RealNum -> Bool
+isFloat (Float _) = True
+isFloat _ = False
+
+-- Build a rational, demoting to Int when the denominator is 1.
+fromRatio :: Rational -> RealNum
+fromRatio r
+  | denominator r == 1 = Int (numerator r)
+  | otherwise = Rational r
+
+toRatio :: RealNum -> Rational
+toRatio (Int a) = fromInteger a
+toRatio (Rational a) = a
+toRatio (Float a) = toRational a
+
+toDouble :: RealNum -> Double
+toDouble (Int a) = fromInteger a
+toDouble (Rational a) = fromRational a
+toDouble (Float a) = a
+
+-- Lift unary operations on Integer, Rational, and Double to RealNum.
+liftUnary ::
+  (Integer -> Integer) ->
+  (Rational -> Rational) ->
+  (Double -> Double) ->
+  RealNum ->
+  RealNum
+liftUnary fi _ _ (Int a) = Int (fi a)
+liftUnary _ fr _ (Rational a) = fromRatio (fr a)
+liftUnary _ _ fd (Float a) = Float (fd a)
+
+-- Lift binary operations on Integer, Rational, and Double to RealNum.
+liftBinary ::
+  (Integer -> Integer -> Integer) ->
+  (Rational -> Rational -> Rational) ->
+  (Double -> Double -> Double) ->
+  RealNum ->
+  RealNum ->
+  RealNum
+liftBinary fi fr fd a b
+  | Int x <- a, Int y <- b = Int (fi x y)
+  | isFloat a || isFloat b = Float (fd (toDouble a) (toDouble b))
+  | otherwise = fromRatio (fr (toRatio a) (toRatio b))
+
 instance Num RealNum where
   fromInteger = Int
-  (Int a) + (Int b) = Int (a + b)
-  (Int a) + (Rational b) = Rational (fromInteger a + b)
-  (Int a) + (Float b) = Float (fromInteger a + b)
-  (Rational a) + (Int b) = Rational (a + fromInteger b)
-  (Rational a) + (Rational b) = Rational (a + b)
-  (Rational a) + (Float b) = Float (fromRational a + b)
-  (Float a) + (Int b) = Float (a + fromInteger b)
-  (Float a) + (Rational b) = Float (a + fromRational b)
-  (Float a) + (Float b) = Float (a + b)
-  (Int a) * (Int b) = Int (a * b)
-  (Int a) * (Rational b) = Rational (fromInteger a * b)
-  (Int a) * (Float b) = Float (fromInteger a * b)
-  (Rational a) * (Int b) = Rational (a * fromInteger b)
-  (Rational a) * (Rational b) = Rational (a * b)
-  (Rational a) * (Float b) = Float (fromRational a * b)
-  (Float a) * (Int b) = Float (a * fromInteger b)
-  (Float a) * (Rational b) = Float (a * fromRational b)
-  (Float a) * (Float b) = Float (a * b)
-  abs (Int a) = Int (abs a)
-  abs (Rational a) = Rational (abs a)
-  abs (Float a) = Float (abs a)
-  signum (Int a) = Int (signum a)
-  signum (Rational a) = Rational (signum a)
-  signum (Float a) = Float (signum a)
-  negate (Int a) = Int (negate a)
-  negate (Rational a) = Rational (negate a)
-  negate (Float a) = Float (negate a)
+  (+) = liftBinary (+) (+) (+)
+  (-) = liftBinary (-) (-) (-)
+  (*) = liftBinary (*) (*) (*)
+  abs = liftUnary abs abs abs
+  signum = liftUnary signum signum signum
+  negate = liftUnary negate negate negate
 
 instance Fractional RealNum where
   fromRational = Rational
-  (Int a) / (Int b) = Rational (a % b)
-  (Int a) / (Rational b) = Rational (fromInteger a / b)
-  (Int a) / (Float b) = Float (fromInteger a / b)
-  (Rational a) / (Int b) = Rational (a / fromInteger b)
-  (Rational a) / (Rational b) = Rational (a / b)
-  (Rational a) / (Float b) = Float (fromRational a / b)
-  (Float a) / (Int b) = Float (a / fromInteger b)
-  (Float a) / (Rational b) = Float (a / fromRational b)
-  (Float a) / (Float b) = Float (a / b)
+
+  -- int / int should produce a rational
+  a / b
+    | isFloat a || isFloat b = Float (toDouble a / toDouble b)
+    | otherwise = fromRatio (toRatio a / toRatio b)
 
 -- Parse <uint R>[/<uint R>]. If R = D also parse <uint R>.<uint R>.
 parseUReal :: Radix -> Parser RealNum
@@ -136,10 +157,7 @@ parseUReal radix = do
         _ -> makeRational (toInt first) (toInt second)
       where
         makeRational _ 0 = fail "Denominator cannot be zero"
-        makeRational num denom =
-          return $
-            let r = num % denom
-             in if denominator r == 1 then Int (numerator r) else Rational r
+        makeRational num denom = return $ fromRatio (num % denom)
 
 data Radix = B | O | D | X deriving (Show, Eq)
 
