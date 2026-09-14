@@ -164,11 +164,19 @@ parseUReal radix = do
       case sep of
         '.' -> return $ Float (read (first ++ "." ++ second))
         _ -> makeRational (toInt first) (toInt second)
-      where
-        makeRational _ 0 = fail "Denominator cannot be zero"
-        makeRational num denom = return $ fromRatio (num % denom)
+
+makeRational :: Integer -> Integer -> Parser RealNum
+makeRational _ 0 = fail "Denominator cannot be zero"
+makeRational num denom = return $ fromRatio (num % denom)
 
 data Radix = B | O | D | X deriving (Show, Eq)
+
+parseRadix :: Parser Radix
+parseRadix =
+  (char 'b' >> return B)
+    <|> (char 'o' >> return O)
+    <|> (char 'd' >> return D)
+    <|> (char 'x' >> return X)
 
 parseDigit :: Radix -> Parser Char
 parseDigit B = oneOf "01"
@@ -196,10 +204,7 @@ parseHash = do
   _ <- char '#'
   (char 't' >> return (Bool True))
     <|> (char 'f' >> return (Bool False))
-    <|> (char 'b' >> parseComplex B)
-    <|> (char 'o' >> parseComplex O)
-    <|> (char 'd' >> parseComplex D)
-    <|> (char 'x' >> parseComplex X)
+    <|> (parseRadix >>= parseComplex)
     <|> (char '\\' >> parseChar)
 
 parseChar :: Parser SExp
