@@ -48,37 +48,39 @@ parseAtom = do
 symbol :: Parser Char
 symbol = oneOf "!$%&|*/:<=>?@^_~"
 
--- <complex R> ::= [+/-] <ureal R> [+/- [<ureal R>] i]
---               |  +/- [<ureal R>] i
+-- <complex R> ::=
+--     <ureal R> [+/- [<ureal R>] i]
+--   | +/- [<ureal R>] i
+--   | +/-  <ureal R> [+/- [<ureal R>] i]
 parseComplex :: Radix -> Parser SExp
-parseComplex radix = do
-  sign <- optionMaybe (oneOf "+-")
-  realPart <- optionMaybe (parseUReal radix)
-  mi <- optionMaybe (char 'i')
-  case (sign, realPart, mi) of
-    -- Special case: Parse +/- sign as an atom.
-    (Just s, Nothing, Nothing) -> return $ Atom [s]
-    -- Imaginary part only: +/- [<ureal R>] i.
-    (Just s, _, Just _) ->
-      let uimg = fromMaybe 1 realPart
-       in return $ Complex (0 :+ applySign s uimg)
-    -- Got real part [+/-] <ureal R>, left to parse img part
-    (_, Just ureal, Nothing) -> do
-      let real = maybe id applySign sign ureal
-      imgPart <- optionMaybe (parseImgPart radix)
-      case imgPart of
-        Nothing -> return $ Real real
-        Just img -> return $ Complex (real :+ img)
-    _ -> fail "Invalid number format"
+parseComplex radix = unsigned <|> signed
+  where
+    unsigned = parseUReal radix >>= attachImgPart
+    signed = do
+      sign <- oneOf "+-"
+      mureal <- optionMaybe (parseUReal radix)
+      mi <- optionMaybe (char 'i')
+      case (mureal, mi) of
+        (Nothing, Nothing) -> return $ Atom [sign]
+        (_, Just _) ->
+          let img = applySign sign (fromMaybe 1 mureal)
+           in return $ Complex (0 :+ img)
+        (Just ureal, _) -> attachImgPart $ applySign sign ureal
+    attachImgPart real = do
+      mimg <- optionMaybe (parseImgPart radix)
+      return $ case mimg of
+        Nothing -> Real real
+        Just img -> Complex (real :+ img)
 
 applySign :: Char -> RealNum -> RealNum
-applySign c = if c == '-' then negate else id
+applySign '-' = negate
+applySign _ = id
 
 -- Parse +/- [<ureal R>] i.
 parseImgPart :: Radix -> Parser RealNum
 parseImgPart radix = do
   sign <- oneOf "+-"
-  ureal <- option (Int 1) (parseUReal radix)
+  ureal <- option 1 (parseUReal radix)
   _ <- char 'i'
   return $ applySign sign ureal
 
