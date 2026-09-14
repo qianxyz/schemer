@@ -2,6 +2,7 @@ module Schemer where
 
 import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
+import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import Text.ParserCombinators.Parsec hiding (spaces)
 
@@ -45,33 +46,41 @@ parseAtom = do
   return $ Atom atom
 
 symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!$%&|*/:<=>?@^_~"
 
--- <complex R> ::=      +/- [<ureal R>] i
---   | [+/-] <ureal R> [+/- [<ureal R>] i]
+-- <complex R> ::= [+/-] <ureal R> [+/- [<ureal R>] i]
+--               |  +/- [<ureal R>] i
 parseComplex :: Radix -> Parser SExp
--- TODO: Parse real first so that the ordinary case won't need to backtrack
-parseComplex radix = try imgOnly <|> realAndImg
-  where
-    imgOnly = do
-      img <- parseImgPart radix
-      return $ Complex (0 :+ img)
-    realAndImg = do
-      sign <- option '+' (oneOf "+-")
-      ureal <- parseUReal radix
-      let real = if sign == '+' then ureal else negate ureal
-      img <- optionMaybe $ parseImgPart radix
-      return $ case img of
-        Nothing -> Real real
-        Just i -> Complex (real :+ i)
+parseComplex radix = do
+  sign <- optionMaybe (oneOf "+-")
+  realPart <- optionMaybe (parseUReal radix)
+  mi <- optionMaybe (char 'i')
+  case (sign, realPart, mi) of
+    -- Special case: Parse +/- sign as an atom.
+    (Just s, Nothing, Nothing) -> return $ Atom [s]
+    -- Imaginary part only: +/- [<ureal R>] i.
+    (Just s, _, Just _) ->
+      let uimg = fromMaybe 1 realPart
+       in return $ Complex (0 :+ applySign s uimg)
+    -- Got real part [+/-] <ureal R>, left to parse img part
+    (_, Just ureal, Nothing) -> do
+      let real = maybe id applySign sign ureal
+      imgPart <- optionMaybe (parseImgPart radix)
+      case imgPart of
+        Nothing -> return $ Real real
+        Just img -> return $ Complex (real :+ img)
+    _ -> fail "Invalid number format"
+
+applySign :: Char -> RealNum -> RealNum
+applySign c = if c == '-' then negate else id
 
 -- Parse +/- [<ureal R>] i.
 parseImgPart :: Radix -> Parser RealNum
 parseImgPart radix = do
   sign <- oneOf "+-"
-  mureal <- option (Int 1) (parseUReal radix)
+  ureal <- option (Int 1) (parseUReal radix)
   _ <- char 'i'
-  return $ if sign == '+' then mureal else negate mureal
+  return $ applySign sign ureal
 
 data RealNum
   = Int Integer
@@ -208,9 +217,9 @@ namedOrSingleLetter = do
 
 parseExpr :: Parser SExp
 parseExpr =
-  try (parseComplex D)
-    <|> parseAtom
+  parseAtom
     <|> parseString
+    <|> parseComplex D
     <|> parseHash
 
 -- Parsec's `spaces = skipMany space` allows zero spaces,
