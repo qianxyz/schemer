@@ -4,7 +4,8 @@ import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
-import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.Parsec
+import Text.Parsec.String (Parser)
 
 data SExp
   = Atom String
