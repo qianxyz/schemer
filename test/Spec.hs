@@ -116,9 +116,11 @@ main = hspec $ do
       it "parses float components" $
         parseSExp "1.5+2.5i" `shouldBe` Right (Complex (Float 1.5 :+ Float 2.5))
       it "parses rational components" $
-        parseSExp "1/2+1/3i" `shouldBe` Right (Complex (Rational (1 % 2) :+ Rational (1 % 3)))
+        parseSExp "1/2+1/3i"
+          `shouldBe` Right (Complex (Rational (1 % 2) :+ Rational (1 % 3)))
       it "parses mixed negative components" $
-        parseSExp "-1/2-1.5i" `shouldBe` Right (Complex (Rational ((-1) % 2) :+ Float (-1.5)))
+        parseSExp "-1/2-1.5i"
+          `shouldBe` Right (Complex (Rational ((-1) % 2) :+ Float (-1.5)))
       it "parses a hex complex" $
         parseSExp "#x1+Ai" `shouldBe` Right (Complex (1 :+ 10))
       it "parses a binary complex" $
@@ -129,3 +131,36 @@ main = hspec $ do
         parseSExp "1+2" `shouldSatisfy` isLeft
       it "rejects a trailing sign" $
         parseSExp "1+" `shouldSatisfy` isLeft
+
+    describe "lists" $ do
+      it "parses a flat list" $
+        parseSExp "(a test)" `shouldBe` Right (List [Atom "a", Atom "test"])
+      it "parses a nested list" $
+        parseSExp "(a (nested) test)"
+          `shouldBe` Right (List [Atom "a", List [Atom "nested"], Atom "test"])
+      it "parses a dotted list" $
+        parseSExp "(a (dotted . list) test)"
+          `shouldBe` Right
+            ( List
+                [ Atom "a",
+                  DottedList [Atom "dotted"] (Atom "list"),
+                  Atom "test"
+                ]
+            )
+      it "parses a quoted list" $
+        parseSExp "(a '(quoted (dotted . list)) test)"
+          `shouldBe` Right
+            ( List
+                [ Atom "a",
+                  List
+                    [ Atom "quote",
+                      List
+                        [ Atom "quoted",
+                          DottedList [Atom "dotted"] (Atom "list")
+                        ]
+                    ],
+                  Atom "test"
+                ]
+            )
+      it "rejects imbalanced parens" $
+        parseSExp "(a '(imbalanced parens)" `shouldSatisfy` isLeft

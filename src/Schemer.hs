@@ -4,7 +4,7 @@ import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
-import Text.Parsec
+import Text.Parsec hiding (spaces)
 import Text.Parsec.String (Parser)
 
 data SExp
@@ -223,17 +223,37 @@ namedOrSingleLetter = do
       "newline" -> return '\n'
       _ -> fail $ "Unknown character literal: " ++ str
 
+-- Parsec's `spaces = skipMany space` allows zero spaces,
+-- so we hide that and define our own here.
+spaces :: Parser ()
+spaces = skipMany1 space
+
+parseList :: Parser SExp
+parseList = List <$> sepBy parseExpr spaces
+
+parseDottedList :: Parser SExp
+parseDottedList = do
+  init' <- endBy parseExpr spaces
+  last' <- char '.' >> spaces >> parseExpr
+  return $ DottedList init' last'
+
+parseQuoted :: Parser SExp
+parseQuoted = do
+  x <- char '\'' >> parseExpr
+  return $ List [Atom "quote", x]
+
 parseExpr :: Parser SExp
 parseExpr =
   parseAtom
     <|> parseString
     <|> parseComplex D
     <|> parseHash
-
--- Parsec's `spaces = skipMany space` allows zero spaces,
--- so we hide that and define our own here.
--- spaces :: Parser ()
--- spaces = skipMany1 space
+    <|> parseQuoted
+    <|> do
+      _ <- char '('
+      x <- try parseList <|> parseDottedList
+      _ <- char ')'
+      return x
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "scheme" input of
