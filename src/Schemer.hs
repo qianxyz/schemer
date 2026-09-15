@@ -2,7 +2,7 @@ module Schemer where
 
 import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import Text.Parsec hiding (spaces)
 import Text.Parsec.String (Parser)
