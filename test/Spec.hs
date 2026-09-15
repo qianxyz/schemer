@@ -164,3 +164,27 @@ main = hspec $ do
             )
       it "rejects imbalanced parens" $
         parseSExp "(a '(imbalanced parens)" `shouldSatisfy` isLeft
+
+    describe "quote forms" $ do
+      it "parses quote" $
+        parseSExp "'a" `shouldBe` Right (List [Atom "quote", Atom "a"])
+      it "parses quasiquote" $
+        parseSExp "`a" `shouldBe` Right (List [Atom "quasiquote", Atom "a"])
+      it "parses unquote" $
+        parseSExp ",a" `shouldBe` Right (List [Atom "unquote", Atom "a"])
+      it "parses unquote-splicing" $
+        parseSExp ",@a" `shouldBe` Right (List [Atom "unquote-splicing", Atom "a"])
+      it "parses unquotes inside a quasiquoted list" $
+        parseSExp "`(a ,b ,@c)"
+          `shouldBe` Right
+            ( List
+                [ Atom "quasiquote",
+                  List
+                    [ Atom "a",
+                      List [Atom "unquote", Atom "b"],
+                      List [Atom "unquote-splicing", Atom "c"]
+                    ]
+                ]
+            )
+      it "rejects a quote with nothing after it" $
+        parseSExp "'" `shouldSatisfy` isLeft

@@ -2,7 +2,7 @@ module Schemer where
 
 import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Ratio (denominator, numerator, (%))
 import Text.Parsec hiding (spaces)
 import Text.Parsec.String (Parser)
@@ -237,10 +237,22 @@ parseDottedList = do
   last' <- char '.' >> spaces >> parseExpr
   return $ DottedList init' last'
 
+desugarQuotes :: String -> Parser a -> Parser SExp
+desugarQuotes s ps = do
+  _ <- ps
+  x <- parseExpr
+  return $ List [Atom s, x]
+
 parseQuoted :: Parser SExp
-parseQuoted = do
-  x <- char '\'' >> parseExpr
-  return $ List [Atom "quote", x]
+parseQuoted = desugarQuotes "quote" $ char '\''
+
+parseQuasiquote :: Parser SExp
+parseQuasiquote = desugarQuotes "quasiquote" $ char '`'
+
+parseUnquote :: Parser SExp
+parseUnquote =
+  (desugarQuotes "unquote-splicing" $ string' ",@")
+    <|> (desugarQuotes "unquote" $ char ',')
 
 parseExpr :: Parser SExp
 parseExpr =
@@ -249,6 +261,8 @@ parseExpr =
     <|> parseComplex D
     <|> parseHash
     <|> parseQuoted
+    <|> parseQuasiquote
+    <|> parseUnquote
     <|> do
       _ <- char '('
       x <- try parseList <|> parseDottedList
