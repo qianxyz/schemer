@@ -3,6 +3,7 @@ module Main (main) where
 import Data.Complex (Complex ((:+)))
 import Data.Either (isLeft)
 import Data.Ratio ((%))
+import Data.Vector (fromList)
 import Schemer
 import Test.Hspec
 import Text.ParserCombinators.Parsec (ParseError, parse)
@@ -141,12 +142,7 @@ main = hspec $ do
       it "parses a dotted list" $
         parseSExp "(a (dotted . list) test)"
           `shouldBe` Right
-            ( List
-                [ Atom "a",
-                  DottedList [Atom "dotted"] (Atom "list"),
-                  Atom "test"
-                ]
-            )
+            (List [Atom "a", DottedList [Atom "dotted"] (Atom "list"), Atom "test"])
       it "parses a quoted list" $
         parseSExp "(a '(quoted (dotted . list)) test)"
           `shouldBe` Right
@@ -162,8 +158,37 @@ main = hspec $ do
                   Atom "test"
                 ]
             )
+      it "parses an empty list" $
+        parseSExp "()" `shouldBe` Right (List [])
+      it "parses a dotted list with several leading elements" $
+        parseSExp "(a b . c)" `shouldBe` Right (DottedList [Atom "a", Atom "b"] (Atom "c"))
       it "rejects imbalanced parens" $
         parseSExp "(a '(imbalanced parens)" `shouldSatisfy` isLeft
+      it "rejects a dot with nothing before it" $
+        parseSExp "(. a)" `shouldSatisfy` isLeft
+      it "rejects a dot with nothing after it" $
+        parseSExp "(a .)" `shouldSatisfy` isLeft
+      it "rejects more than one element after the dot" $
+        parseSExp "(a . b c)" `shouldSatisfy` isLeft
+
+    describe "vectors" $ do
+      it "parses a flat vector" $
+        parseSExp "#(1 2 3)" `shouldBe` Right (Vector (fromList [Real 1, Real 2, Real 3]))
+      it "parses an empty vector" $
+        parseSExp "#()" `shouldBe` Right (Vector (fromList []))
+      it "parses nested lists and vectors" $
+        parseSExp "#(a (b c) #(d))"
+          `shouldBe` Right
+            ( Vector
+                ( fromList
+                    [ Atom "a",
+                      List [Atom "b", Atom "c"],
+                      Vector (fromList [Atom "d"])
+                    ]
+                )
+            )
+      it "rejects a dotted vector" $
+        parseSExp "#(1 . 2)" `shouldSatisfy` isLeft
 
     describe "quote forms" $ do
       it "parses quote" $

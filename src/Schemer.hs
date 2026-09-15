@@ -4,6 +4,7 @@ import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
+import Data.Vector (Vector, fromList)
 import Text.Parsec hiding (spaces)
 import Text.Parsec.String (Parser)
 
@@ -15,9 +16,13 @@ data SExp
   | Bool Bool
   | Char Char
   | List [SExp]
-  | -- A dotted list like (a b . c) is a list that ends with c instead of nil.
-    -- It can be constructed e.g. with `(cons a (cons b c))`.
+  | -- A dotted list, like (a b . c), is a list that ends
+    -- with c instead of nil. It can be constructed
+    -- e.g. with `(cons a (cons b c))`.
     DottedList [SExp] SExp
+  | -- A vector, like #(a b c), is a structure whose elements
+    -- are indexed by integers.
+    Vector (Vector SExp)
   deriving (Show, Eq)
 
 parseString :: Parser SExp
@@ -209,6 +214,10 @@ parseHash = do
     <|> (char 'f' >> return (Bool False))
     <|> (parseRadix >>= parseComplex)
     <|> (char '\\' >> parseChar)
+    <|> Vector . fromList <$> between (char '(') (char ')') parseExprs
+
+parseExprs :: Parser [SExp]
+parseExprs = sepBy parseExpr spaces
 
 parseChar :: Parser SExp
 parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
@@ -229,7 +238,7 @@ spaces :: Parser ()
 spaces = skipMany1 space
 
 parseList :: Parser SExp
-parseList = List <$> sepBy parseExpr spaces
+parseList = List <$> parseExprs
 
 parseDottedList :: Parser SExp
 parseDottedList = do
@@ -263,11 +272,11 @@ parseExpr =
     <|> parseQuoted
     <|> parseQuasiquote
     <|> parseUnquote
-    <|> do
-      _ <- char '('
-      x <- try parseList <|> parseDottedList
-      _ <- char ')'
-      return x
+    <|> ( between
+            (char '(')
+            (char ')')
+            $ try parseList <|> parseDottedList
+        )
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "scheme" input of
