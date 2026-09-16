@@ -18,6 +18,18 @@ main = hspec $ do
       parseSExp "abc" `shouldBe` Right (Atom "abc")
     it "parses a bare i as an atom" $
       parseSExp "i" `shouldBe` Right (Atom "i")
+    it "parses an identifier with digits" $
+      parseSExp "add1" `shouldBe` Right (Atom "add1")
+    it "parses an identifier with a trailing special character" $
+      parseSExp "lat?" `shouldBe` Right (Atom "lat?")
+    it "parses an identifier ending in +" $
+      parseSExp "o+" `shouldBe` Right (Atom "o+")
+    it "parses an identifier containing -> " $
+      parseSExp "list->vector" `shouldBe` Right (Atom "list->vector")
+    it "parses an identifier containing @ and ." $
+      parseSExp "x@y.z" `shouldBe` Right (Atom "x@y.z")
+    it "rejects an identifier starting with @" $
+      parseSExp "@x" `shouldSatisfy` isLeft
     describe "peculiar identifiers" $ do
       it "parses + as an atom" $
         parseSExp "+" `shouldBe` Right (Atom "+")

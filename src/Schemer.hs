@@ -44,15 +44,23 @@ escapeSequence =
         char 't' >> return '\t'
       ]
 
+-- | Parse an atom (also known as symbol or identifier).
+--
+-- Note it does not handle peculiar identifiers (@+@, @-@, @...@):
+-- @+@ and @-@ are treated as a special case in parsing numbers,
+-- and @...@ is not supported yet. -- TODO
+--
+-- From R5RS:
+--
+-- > <identifier> ::= <initial> <subsequent>* | <peculiar identifier>
+-- > <initial>    ::= <letter> | ! $ % & * / : < = > ? ^ _ ~
+-- > <subsequent> ::= <initial> | <digit> | + - . @
+-- > <peculiar identifier> ::= + | - | ...
 parseAtom :: Parser SExp
-parseAtom = do
-  first <- letter <|> symbol
-  rest <- many (letter <|> digit <|> symbol)
-  let atom = first : rest
-  return $ Atom atom
-
-symbol :: Parser Char
-symbol = oneOf "!$%&|*/:<=>?@^_~"
+parseAtom = Atom <$> liftA2 (:) initial (many subsequent)
+  where
+    initial = letter <|> oneOf "!$%&*/:<=>?^_~"
+    subsequent = initial <|> digit <|> oneOf "+-.@"
 
 -- <complex R> ::=
 --     <ureal R> [+/- [<ureal R>] i]
