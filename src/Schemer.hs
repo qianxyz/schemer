@@ -16,33 +16,33 @@ data SExp
   | Bool Bool
   | Char Char
   | List [SExp]
-  | -- A dotted list, like (a b . c), is a list that ends
-    -- with c instead of nil. It can be constructed
-    -- e.g. with `(cons a (cons b c))`.
+  | -- | A list ending in a non-nil element, for example
+    -- @(a b . c)@ (shorthand for @(cons a (cons b c))@).
     DottedList [SExp] SExp
-  | -- A vector, like #(a b c), is a structure whose elements
-    -- are indexed by integers.
+  | -- | A data structure indexed by range of integers
+    -- starting from 0. Represented as e.g. @#(a b c)@.
     Vector (Vector SExp)
   deriving (Show, Eq)
 
+-- | Parse a string enclosed by @"@.
 parseString :: Parser SExp
-parseString = do
-  _ <- char '"'
-  x <- many stringChar
-  _ <- char '"'
-  return $ String x
+parseString = String <$> (between (char '"') (char '"') $ many charInString)
 
--- Parse a single character in a string, handling escape sequences.
-stringChar :: Parser Char
-stringChar = noneOf "\\\"" <|> (char '\\' >> escapeSequence)
+-- | Parse a single character in a string, handling escape sequences.
+charInString :: Parser Char
+charInString = noneOf "\\\"" <|> escapeSequence
 
+-- | Parse escape sequences: @\\\"@, @\\\\@, @\\n@, @\\r@, @\\t@.
 escapeSequence :: Parser Char
 escapeSequence =
-  char '"'
-    <|> char '\\'
-    <|> (char 'n' >> return '\n')
-    <|> (char 'r' >> return '\r')
-    <|> (char 't' >> return '\t')
+  char '\\'
+    >> choice
+      [ char '"',
+        char '\\',
+        char 'n' >> return '\n',
+        char 'r' >> return '\r',
+        char 't' >> return '\t'
+      ]
 
 parseAtom :: Parser SExp
 parseAtom = do
