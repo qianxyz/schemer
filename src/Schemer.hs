@@ -5,7 +5,7 @@ import Data.Complex (Complex ((:+)))
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import Data.Vector (Vector, fromList)
-import Text.Parsec hiding (spaces)
+import Text.Parsec
 import Text.Parsec.String (Parser)
 
 data SExp
@@ -217,7 +217,7 @@ parseHash = do
     <|> Vector . fromList <$> between (char '(') (char ')') parseExprs
 
 parseExprs :: Parser [SExp]
-parseExprs = sepBy parseExpr spaces
+parseExprs = sepBy parseExpr spaces1
 
 parseChar :: Parser SExp
 parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
@@ -232,18 +232,16 @@ namedOrSingleLetter = do
       "newline" -> return '\n'
       _ -> fail $ "Unknown character literal: " ++ str
 
--- Parsec's `spaces = skipMany space` allows zero spaces,
--- so we hide that and define our own here.
-spaces :: Parser ()
-spaces = skipMany1 space
+spaces1 :: Parser ()
+spaces1 = skipMany1 space
 
 parseList :: Parser SExp
 parseList = List <$> parseExprs
 
 parseDottedList :: Parser SExp
 parseDottedList = do
-  init' <- endBy parseExpr spaces
-  last' <- char '.' >> spaces >> parseExpr
+  init' <- endBy parseExpr spaces1
+  last' <- char '.' >> spaces1 >> parseExpr
   return $ DottedList init' last'
 
 desugarQuotes :: String -> Parser a -> Parser SExp
