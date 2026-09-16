@@ -217,7 +217,7 @@ parseHash = do
     <|> Vector . fromList <$> between (char '(') (char ')') parseExprs
 
 parseExprs :: Parser [SExp]
-parseExprs = sepBy parseExpr spaces1
+parseExprs = sepEndBy parseExpr spaces1
 
 parseChar :: Parser SExp
 parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
@@ -236,13 +236,13 @@ spaces1 :: Parser ()
 spaces1 = skipMany1 space
 
 parseList :: Parser SExp
-parseList = List <$> parseExprs
-
-parseDottedList :: Parser SExp
-parseDottedList = do
-  init' <- endBy parseExpr spaces1
-  last' <- char '.' >> spaces1 >> parseExpr
-  return $ DottedList init' last'
+parseList = do
+  xs <- parseExprs
+  if null xs
+    then return $ List []
+    else do
+      mlast <- optionMaybe $ char '.' >> spaces1 >> parseExpr
+      return $ maybe (List xs) (DottedList xs) mlast
 
 desugarQuotes :: String -> Parser a -> Parser SExp
 desugarQuotes s ps = do
@@ -270,11 +270,7 @@ parseExpr =
     <|> parseQuoted
     <|> parseQuasiquote
     <|> parseUnquote
-    <|> ( between
-            (char '(')
-            (char ')')
-            $ try parseList <|> parseDottedList
-        )
+    <|> (between (char '(') (char ')') parseList)
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "scheme" input of
