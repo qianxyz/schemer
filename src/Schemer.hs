@@ -99,21 +99,25 @@ applySign _ = id
 -- | Parse @<imagPart> ::= +/- [<ureal>] i@.
 parseImagPart :: Radix -> Parser RealNum
 parseImagPart radix =
-  applySign <$> (oneOf "+-") <*> (option 1 $ parseUReal radix) <* char 'i'
+  applySign <$> oneOf "+-" <*> option 1 (parseUReal radix) <* char 'i'
 
+-- | A real number in Scheme, which can be an integer, a rational
+-- or a float. Also used as the real/imag parts of a complex number.
 data RealNum
   = Int Integer
   | Rational Rational
   | Float Double
   deriving (Show, Eq)
 
--- TODO: Implement RealFloat for RealNum
+-- TODO: Make `Complex RealNum` instance of `Num`.
+-- Can be done by implementing `RealFloat` for `RealNum`
+-- or writing the arithmetics directly.
 
 isFloat :: RealNum -> Bool
 isFloat (Float _) = True
 isFloat _ = False
 
--- Build a rational, demoting to Int when the denominator is 1.
+-- | Build a rational, demoting to Int when the denominator is 1.
 fromRatio :: Rational -> RealNum
 fromRatio r
   | denominator r == 1 = Int (numerator r)
@@ -129,7 +133,7 @@ toDouble (Int a) = fromInteger a
 toDouble (Rational a) = fromRational a
 toDouble (Float a) = a
 
--- Lift unary operations on Integer, Rational, and Double to RealNum.
+-- | Lift unary operations on Integer, Rational, and Double to RealNum.
 liftUnary ::
   (Integer -> Integer) ->
   (Rational -> Rational) ->
@@ -140,7 +144,7 @@ liftUnary fi _ _ (Int a) = Int (fi a)
 liftUnary _ fr _ (Rational a) = fromRatio (fr a)
 liftUnary _ _ fd (Float a) = Float (fd a)
 
--- Lift binary operations on Integer, Rational, and Double to RealNum.
+-- | Lift binary operations on Integer, Rational, and Double to RealNum.
 liftBinary ::
   (Integer -> Integer -> Integer) ->
   (Rational -> Rational -> Rational) ->
@@ -165,57 +169,74 @@ instance Num RealNum where
 instance Fractional RealNum where
   fromRational = Rational
 
-  -- int / int should produce a rational
   a / b
     | isFloat a || isFloat b = Float (toDouble a / toDouble b)
+    -- int / int should produce a rational
     | otherwise = fromRatio (toRatio a / toRatio b)
 
--- Parse <uint R>[/<uint R>]. If R = D also parse <uint R>.<uint R>.
+-- | Parse an unsigned real number.
+--
+-- > <ureal R>    ::= <uint R>
+-- >                | <uint R> / <uint R>
+-- >                | <decimal R>
+-- > <decimal 10> ::= <digit>+ . <digit>+
+--
+-- Note that decimals are only defined for base 10,
+-- and both integer and fractional part should be present.
 parseUReal :: Radix -> Parser RealNum
 parseUReal radix = do
-  first <- parseDigitString radix
-  msep <- optionMaybe $ if radix == D then oneOf "/." else char '/'
-  let toInt = stringToBaseInt radix
+  first <- parseDigits radix
+  msep <- optionMaybe $ if radix == Dec then oneOf "/." else char '/'
+  let toInt = digitsToInteger radix
   case msep of
     Nothing -> return $ Int (toInt first)
     Just sep -> do
-      second <- parseDigitString radix
+      second <- parseDigits radix
       case sep of
         '.' -> return $ Float (read (first ++ "." ++ second))
-        _ -> makeRational (toInt first) (toInt second)
+        _ -> ratio (toInt first) (toInt second)
 
-makeRational :: Integer -> Integer -> Parser RealNum
-makeRational _ 0 = fail "Denominator cannot be zero"
-makeRational num denom = return $ fromRatio (num % denom)
+-- | Compose a rational (or int) from two integers.
+-- Fail when the denominator is 0.
+ratio :: Integer -> Integer -> Parser RealNum
+ratio _ 0 = fail "Denominator cannot be zero"
+ratio num denom = return $ fromRatio (num % denom)
 
-data Radix = B | O | D | X deriving (Show, Eq)
+-- | The radix of a number, indicated by a prefix of
+-- @#b@, @#o@, @#d@ or @#x@.
+data Radix = Bin | Oct | Dec | Hex deriving (Show, Eq)
 
+-- | Parse the character after @#@ into its corresponding radix.
 parseRadix :: Parser Radix
 parseRadix =
-  (char 'b' >> return B)
-    <|> (char 'o' >> return O)
-    <|> (char 'd' >> return D)
-    <|> (char 'x' >> return X)
+  (char 'b' >> return Bin)
+    <|> (char 'o' >> return Oct)
+    <|> (char 'd' >> return Dec)
+    <|> (char 'x' >> return Hex)
 
+-- | Parse a digit in a specific radix.
 parseDigit :: Radix -> Parser Char
-parseDigit B = oneOf "01"
-parseDigit O = octDigit
-parseDigit D = digit
-parseDigit X = hexDigit
+parseDigit Bin = oneOf "01"
+parseDigit Oct = octDigit
+parseDigit Dec = digit
+parseDigit Hex = hexDigit
 
+-- | Convert a radix into its base as a number.
 radixToBase :: Radix -> Integer
-radixToBase B = 2
-radixToBase O = 8
-radixToBase D = 10
-radixToBase X = 16
+radixToBase Bin = 2
+radixToBase Oct = 8
+radixToBase Dec = 10
+radixToBase Hex = 16
 
-stringToBaseInt :: Radix -> String -> Integer
-stringToBaseInt D = read
-stringToBaseInt radix =
-  foldl' (\acc c -> acc * radixToBase radix + toInteger (digitToInt c)) 0
+-- | Convert a string of digits into an integer in a specific radix.
+digitsToInteger :: Radix -> String -> Integer
+digitsToInteger Dec = read
+digitsToInteger r =
+  foldl' (\acc c -> acc * radixToBase r + toInteger (digitToInt c)) 0
 
-parseDigitString :: Radix -> Parser String
-parseDigitString = many1 . parseDigit
+-- | Parse a string of digits in a specific radix.
+parseDigits :: Radix -> Parser String
+parseDigits = many1 . parseDigit
 
 -- Parse a #-prefixed expression.
 parseHash :: Parser SExp
@@ -276,7 +297,7 @@ parseExpr :: Parser SExp
 parseExpr =
   parseAtom
     <|> parseString
-    <|> parseNumber D
+    <|> parseNumber Dec
     <|> parseHash
     <|> parseQuoted
     <|> parseQuasiquote
