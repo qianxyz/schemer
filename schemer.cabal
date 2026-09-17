@@ -60,7 +60,7 @@ library
                       parsec,
                       vector
     hs-source-dirs:   src
-    default-language: Haskell2010
+    default-language: GHC2021
 
 executable schemer
     -- Import common warning flags.
@@ -83,7 +83,7 @@ executable schemer
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
-    default-language: Haskell2010
+    default-language: GHC2021
 
 test-suite spec
     import:           warnings
@@ -95,4 +95,4 @@ test-suite spec
                       vector,
                       schemer
     hs-source-dirs:   test
-    default-language: Haskell2010
+    default-language: GHC2021

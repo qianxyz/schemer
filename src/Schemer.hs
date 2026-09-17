@@ -2,7 +2,6 @@ module Schemer where
 
 import Data.Char (digitToInt, toLower)
 import Data.Complex (Complex ((:+)))
-import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import Data.Vector (Vector, fromList)
 import Text.Parsec
@@ -53,7 +52,7 @@ escapeSequence =
 parseAtom :: Parser SExp
 parseAtom =
   Atom
-    <$> ( liftA2 (:) initial (many subsequent)
+    <$> ( (:) <$> initial <*> (many subsequent)
             -- Need `endOfToken` check here to not parse +/-<number>.
             <|> try (peculiarIdentifier <* endOfToken)
         )
@@ -67,41 +66,40 @@ parseAtom =
 endOfToken :: Parser ()
 endOfToken = notFollowedBy $ noneOf " \n\t\r()\";"
 
--- <complex R> ::=
---     <ureal R> [+/- [<ureal R>] i]
---   | +/- [<ureal R>] i
---   | +/-  <ureal R> [+/- [<ureal R>] i]
-parseComplex :: Radix -> Parser SExp
-parseComplex radix = unsigned <|> signed
+-- | Parse a (complex) number under a radix.
+--
+-- > <complex>  ::= <ureal> [<imagPart>]
+-- >              | +/- i
+-- >              | +/- <ureal> i
+-- >              | +/- <ureal> [<imagPart>]
+-- > <imagPart> ::= +/- [<ureal>] i
+parseNumber :: Radix -> Parser SExp
+parseNumber radix = unsigned <|> signed
   where
-    unsigned = parseUReal radix >>= attachImgPart
+    unsigned = parseUReal radix >>= attachImagPart -- <ureal> [<imagPart>]
     signed = do
       sign <- oneOf "+-"
-      mureal <- optionMaybe (parseUReal radix)
-      mi <- optionMaybe (char 'i')
-      case (mureal, mi) of
-        (Nothing, Nothing) -> fail "TODO"
-        (_, Just _) ->
-          let img = applySign sign (fromMaybe 1 mureal)
-           in return $ Complex (0 :+ img)
-        (Just ureal, _) -> attachImgPart $ applySign sign ureal
-    attachImgPart real = do
-      mimg <- optionMaybe (parseImgPart radix)
-      return $ case mimg of
+      (pureImag $ applySign sign 1) -- +/- i
+        <|> do
+          ureal <- parseUReal radix
+          let real = applySign sign ureal
+          pureImag real -- +/- <ureal> i
+            <|> attachImagPart real -- +/- <ureal> [<imagPart>]
+    pureImag i = char 'i' >> return (Complex $ 0 :+ i)
+    attachImagPart real = do
+      mimag <- optionMaybe (parseImagPart radix)
+      return $ case mimag of
         Nothing -> Real real
-        Just img -> Complex (real :+ img)
+        Just imag -> Complex (real :+ imag)
 
 applySign :: Char -> RealNum -> RealNum
 applySign '-' = negate
 applySign _ = id
 
--- Parse +/- [<ureal R>] i.
-parseImgPart :: Radix -> Parser RealNum
-parseImgPart radix = do
-  sign <- oneOf "+-"
-  ureal <- option 1 (parseUReal radix)
-  _ <- char 'i'
-  return $ applySign sign ureal
+-- | Parse @<imagPart> ::= +/- [<ureal>] i@.
+parseImagPart :: Radix -> Parser RealNum
+parseImagPart radix =
+  applySign <$> (oneOf "+-") <*> (option 1 $ parseUReal radix) <* char 'i'
 
 data RealNum
   = Int Integer
@@ -225,7 +223,7 @@ parseHash = do
   _ <- char '#'
   (char 't' >> return (Bool True))
     <|> (char 'f' >> return (Bool False))
-    <|> (parseRadix >>= parseComplex)
+    <|> (parseRadix >>= parseNumber)
     <|> (char '\\' >> parseChar)
     <|> Vector . fromList <$> between (char '(') (char ')') parseExprs
 
@@ -278,7 +276,7 @@ parseExpr :: Parser SExp
 parseExpr =
   parseAtom
     <|> parseString
-    <|> parseComplex D
+    <|> parseNumber D
     <|> parseHash
     <|> parseQuoted
     <|> parseQuasiquote
