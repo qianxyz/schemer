@@ -35,6 +35,16 @@ main = hspec $ do
         parseSExp "+" `shouldBe` Right (Atom "+")
       it "parses - as an atom" $
         parseSExp "-" `shouldBe` Right (Atom "-")
+      it "parses ... as an atom" $
+        parseSExp "..." `shouldBe` Right (Atom "...")
+      it "parses ... inside a list" $
+        parseSExp "(a ...)" `shouldBe` Right (List [Atom "a", Atom "..."])
+      it "parses + as the operator in a call" $
+        parseSExp "(+ 1 2)" `shouldBe` Right (List [Atom "+", Real 1, Real 2])
+      it "rejects a sign followed by a letter" $
+        parseSExp "+a" `shouldSatisfy` isLeft
+      it "rejects four dots" $
+        parseSExp "...." `shouldSatisfy` isLeft
 
   describe "strings" $ do
     it "parses a simple string" $

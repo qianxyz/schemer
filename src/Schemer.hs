@@ -44,23 +44,28 @@ escapeSequence =
         char 't' >> return '\t'
       ]
 
--- | Parse an atom (also known as symbol or identifier).
---
--- Note it does not handle peculiar identifiers (@+@, @-@, @...@):
--- @+@ and @-@ are treated as a special case in parsing numbers,
--- and @...@ is not supported yet. -- TODO
---
--- From R5RS:
+-- | Parse an atom (also known as symbol or identifier). From R5RS:
 --
 -- > <identifier> ::= <initial> <subsequent>* | <peculiar identifier>
 -- > <initial>    ::= <letter> | ! $ % & * / : < = > ? ^ _ ~
 -- > <subsequent> ::= <initial> | <digit> | + - . @
 -- > <peculiar identifier> ::= + | - | ...
 parseAtom :: Parser SExp
-parseAtom = Atom <$> liftA2 (:) initial (many subsequent)
+parseAtom =
+  Atom
+    <$> ( liftA2 (:) initial (many subsequent)
+            -- Need `endOfToken` check here to not parse +/-<number>.
+            <|> try (peculiarIdentifier <* endOfToken)
+        )
   where
     initial = letter <|> oneOf "!$%&*/:<=>?^_~"
     subsequent = initial <|> digit <|> oneOf "+-.@"
+    peculiarIdentifier = choice $ string' <$> ["+", "-", "..."]
+
+-- | Succeed without consuming input if the current token has ended,
+-- i.e. the next character is a delimiter or EOF.
+endOfToken :: Parser ()
+endOfToken = notFollowedBy $ noneOf " \n\t\r()\";"
 
 -- <complex R> ::=
 --     <ureal R> [+/- [<ureal R>] i]
@@ -75,7 +80,7 @@ parseComplex radix = unsigned <|> signed
       mureal <- optionMaybe (parseUReal radix)
       mi <- optionMaybe (char 'i')
       case (mureal, mi) of
-        (Nothing, Nothing) -> return $ Atom [sign]
+        (Nothing, Nothing) -> fail "TODO"
         (_, Just _) ->
           let img = applySign sign (fromMaybe 1 mureal)
            in return $ Complex (0 :+ img)
