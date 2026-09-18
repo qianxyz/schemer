@@ -251,12 +251,12 @@ parseHash = do
     <|> (char 'f' >> return (Bool False))
     <|> (parseRadix >>= parseNumber)
     <|> (char '\\' >> parseChar)
-    <|> Vector . fromList <$> parseExprsInParens
+    <|> Vector . fromList <$> parens parseExprs
 
--- | Parse a list of expressions enclosed between @(@ and @)@. Consume
--- the parentheses too. Spaces are allowed after @(@ and before @)@.
-parseExprsInParens :: Parser [SExp]
-parseExprsInParens = between (char '(' >> spaces) (char ')') parseExprs
+-- | @parens p@ parses @p@ enclosed between @(@ and @)@.
+-- Spaces are allowed after @(@ and before @)@.
+parens :: Parser a -> Parser a
+parens = between (char '(' >> spaces) (spaces >> char ')')
 
 -- | Parse a list of expressions, separated and optionally ended by spaces.
 parseExprs :: Parser [SExp]
@@ -281,13 +281,20 @@ charNames =
 stringCI' :: String -> Parser String
 stringCI' = try . traverse (\c -> oneOf [toLower c, toUpper c])
 
+-- | Parse one or more spaces.
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
 
-parseList :: Parser SExp
-parseList = do
+-- | Parse a list or a dotted list, including the enclosing @()@.
+-- Spaces are allowed after @(@ and before @)@.
+parseListOrDotted :: Parser SExp
+parseListOrDotted = parens listBody
+
+-- | Parse the body of a list between @()@ (not including them).
+listBody :: Parser SExp
+listBody = do
   xs <- parseExprs
-  if null xs
+  if null xs -- dotted list must have something before dot
     then return $ List []
     else do
       mlast <- optionMaybe $ char '.' >> spaces1 >> parseExpr
@@ -319,7 +326,7 @@ parseExpr =
     <|> parseQuoted
     <|> parseQuasiquote
     <|> parseUnquote
-    <|> (between (char '(') (char ')') parseList)
+    <|> parseListOrDotted
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "scheme" input of

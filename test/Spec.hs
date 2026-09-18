@@ -198,6 +198,14 @@ main = hspec $ do
             )
       it "parses an empty list" $
         parseSExp "()" `shouldBe` Right (List [])
+      it "parses an empty list with spaces inside" $
+        parseSExp "( )" `shouldBe` Right (List [])
+      it "parses a list with spaces after ( and before )" $
+        parseSExp "( a b )" `shouldBe` Right (List [Atom "a", Atom "b"])
+      it "parses a list with newlines between elements" $
+        parseSExp "(a\n  b)" `shouldBe` Right (List [Atom "a", Atom "b"])
+      it "parses a dotted list with a space before )" $
+        parseSExp "(a . b )" `shouldBe` Right (DottedList [Atom "a"] (Atom "b"))
       it "parses a dotted list with several leading elements" $
         parseSExp "(a b . c)" `shouldBe` Right (DottedList [Atom "a", Atom "b"] (Atom "c"))
       it "rejects imbalanced parens" $
@@ -214,6 +222,8 @@ main = hspec $ do
         parseSExp "#(1 2 3)" `shouldBe` Right (Vector (fromList [Real 1, Real 2, Real 3]))
       it "parses an empty vector" $
         parseSExp "#()" `shouldBe` Right (Vector (fromList []))
+      it "parses a vector with spaces after ( and before )" $
+        parseSExp "#( 1 2 )" `shouldBe` Right (Vector (fromList [Real 1, Real 2]))
       it "parses nested lists and vectors" $
         parseSExp "#(a (b c) #(d))"
           `shouldBe` Right
