@@ -300,22 +300,31 @@ listBody = do
       mlast <- optionMaybe $ char '.' >> spaces1 >> parseExpr
       return $ maybe (List xs) (DottedList xs) mlast
 
-desugarQuotes :: String -> Parser a -> Parser SExp
-desugarQuotes s ps = do
-  _ <- ps
+-- | @quoteForm name@ parses an expression @e@ and return
+-- the Scheme list @(name e)@. Used to construct list forms
+-- from the quote forms.
+quoteForm :: String -> Parser SExp
+quoteForm name = do
   x <- parseExpr
-  return $ List [Atom s, x]
+  return $ List [Atom name, x]
 
+-- | Parse a quoted expression @'e@, returning @(quote e)@.
 parseQuoted :: Parser SExp
-parseQuoted = desugarQuotes "quote" $ char '\''
+parseQuoted = char '\'' >> quoteForm "quote"
 
-parseQuasiquote :: Parser SExp
-parseQuasiquote = desugarQuotes "quasiquote" $ char '`'
+-- | Parse a quasiquoted expression @\`e@, returning @(quasiquote e)@.
+parseQuasiquoted :: Parser SExp
+parseQuasiquoted = char '`' >> quoteForm "quasiquote"
 
-parseUnquote :: Parser SExp
-parseUnquote =
-  (desugarQuotes "unquote-splicing" $ string' ",@")
-    <|> (desugarQuotes "unquote" $ char ',')
+-- | Parse an unquoted expression
+--
+-- * @,\@e@ into @(unquote-splicing e)@;
+-- * @,e@ into @(unquote e)@.
+parseUnquoted :: Parser SExp
+parseUnquoted =
+  -- Must try ,@ first since , is a prefix of it.
+  (string' ",@" >> quoteForm "unquote-splicing")
+    <|> (char ',' >> quoteForm "unquote")
 
 parseExpr :: Parser SExp
 parseExpr =
@@ -324,8 +333,8 @@ parseExpr =
     <|> parseNumber Dec
     <|> parseHash
     <|> parseQuoted
-    <|> parseQuasiquote
-    <|> parseUnquote
+    <|> parseQuasiquoted
+    <|> parseUnquoted
     <|> parseListOrDotted
 
 readExpr :: String -> String
