@@ -1,6 +1,6 @@
 module Schemer where
 
-import Data.Char (digitToInt, toLower)
+import Data.Char (digitToInt, toLower, toUpper)
 import Data.Complex (Complex ((:+)))
 import Data.Ratio (denominator, numerator, (%))
 import Data.Vector (Vector, fromList)
@@ -262,18 +262,24 @@ parseExprsInParens = between (char '(' >> spaces) (char ')') parseExprs
 parseExprs :: Parser [SExp]
 parseExprs = sepEndBy parseExpr spaces1
 
+-- | Parse a Scheme character literal after @#\\@, which can be
+-- a character name (@space@ or @newline@) or a single character.
+-- Must be followed by a delimiter.
 parseChar :: Parser SExp
-parseChar = Char <$> (namedOrSingleLetter <|> anyChar)
+parseChar = Char <$> ((tryCharNames <|> anyChar) <* endOfToken)
+  where
+    tryCharNames = choice [c <$ stringCI' name | (name, c) <- charNames]
 
-namedOrSingleLetter :: Parser Char
-namedOrSingleLetter = do
-  str <- many1 letter
-  case str of
-    [c] -> return c
-    _ -> case map toLower str of
-      "space" -> return ' '
-      "newline" -> return '\n'
-      _ -> fail $ "Unknown character literal: " ++ str
+-- | Character names, with the character they represent.
+charNames :: [(String, Char)]
+charNames =
+  [ ("space", ' '),
+    ("newline", '\n')
+  ]
+
+-- | Parse a case-insensitive string, without consuming matching prefix.
+stringCI' :: String -> Parser String
+stringCI' = try . traverse (\c -> oneOf [toLower c, toUpper c])
 
 spaces1 :: Parser ()
 spaces1 = skipMany1 space

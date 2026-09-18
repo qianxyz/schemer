@@ -71,8 +71,24 @@ main = hspec $ do
       parseSExp "#\\space" `shouldBe` Right (Char ' ')
     it "parses a named character with mixed case" $
       parseSExp "#\\Space" `shouldBe` Right (Char ' ')
+    it "parses a punctuation character" $
+      parseSExp "#\\(" `shouldBe` Right (Char '(')
+    it "parses a literal space character" $
+      parseSExp "#\\ " `shouldBe` Right (Char ' ')
+    it "parses newline" $
+      parseSExp "#\\newline" `shouldBe` Right (Char '\n')
+    it "parses a single letter that prefixes a character name" $
+      parseSExp "#\\s" `shouldBe` Right (Char 's')
+    it "parses characters inside a list" $
+      parseSExp "(#\\a #\\b)" `shouldBe` Right (List [Char 'a', Char 'b'])
     it "rejects an unknown character name" $
       parseSExp "#\\ab" `shouldSatisfy` isLeft
+    it "rejects a character name followed by garbage" $
+      parseSExp "#\\spacex" `shouldSatisfy` isLeft
+    it "rejects a prefix of a character name" $
+      parseSExp "#\\sp" `shouldSatisfy` isLeft
+    it "rejects an empty character literal" $
+      parseSExp "#\\" `shouldSatisfy` isLeft
 
   describe "numbers" $ do
     describe "integers" $ do
