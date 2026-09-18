@@ -238,7 +238,12 @@ digitsToInteger r =
 parseDigits :: Radix -> Parser String
 parseDigits = many1 . parseDigit
 
--- Parse a #-prefixed expression.
+-- | Parse an expression prefixed by @#@, which can be:
+--
+-- * a boolean (@#t@ or @#f@);
+-- * a number prefixed by @#b@, @#o@, @#d@, @#x@;
+-- * a character literal, like @#\\a@ or @#\\space@;
+-- * a vector, like @#(a b c)@.
 parseHash :: Parser SExp
 parseHash = do
   _ <- char '#'
@@ -246,8 +251,14 @@ parseHash = do
     <|> (char 'f' >> return (Bool False))
     <|> (parseRadix >>= parseNumber)
     <|> (char '\\' >> parseChar)
-    <|> Vector . fromList <$> between (char '(') (char ')') parseExprs
+    <|> Vector . fromList <$> parseExprsInParens
 
+-- | Parse a list of expressions enclosed between @(@ and @)@. Consume
+-- the parentheses too. Spaces are allowed after @(@ and before @)@.
+parseExprsInParens :: Parser [SExp]
+parseExprsInParens = between (char '(' >> spaces) (char ')') parseExprs
+
+-- | Parse a list of expressions, separated and optionally ended by spaces.
 parseExprs :: Parser [SExp]
 parseExprs = sepEndBy parseExpr spaces1
 
