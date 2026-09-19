@@ -92,10 +92,15 @@ test-suite spec
     import:           warnings
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
+    other-modules:    Schemer.DisplaySpec,
+                      Schemer.ParseSpec
     build-depends:    base ^>=4.20.2.0,
                       hspec,
                       parsec,
+                      text,
+                      text-display,
                       vector,
                       schemer
+    build-tool-depends: hspec-discover:hspec-discover
     hs-source-dirs:   test
     default-language: GHC2021
