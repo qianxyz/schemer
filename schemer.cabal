@@ -55,7 +55,9 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  Schemer
+    exposed-modules:  Schemer,
+                      Schemer.Parse,
+                      Schemer.Types
     build-depends:    base ^>=4.20.2.0,
                       parsec,
                       vector
