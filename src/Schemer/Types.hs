@@ -2,7 +2,7 @@
 
 module Schemer.Types where
 
-import Data.Complex (Complex)
+import Data.Complex (Complex, imagPart, realPart)
 import Data.Ratio (denominator, numerator)
 import Data.Text.Display (Display (displayBuilder, displayList))
 import Data.Vector (Vector, toList)
@@ -26,7 +26,14 @@ data SExp
 instance Display SExp where
   displayBuilder (Atom name) = displayBuilder name
   displayBuilder (Real n) = displayBuilder n
-  displayBuilder (Complex n) = undefined -- TODO
+  displayBuilder (Complex n) = displayComplex (realPart n) (imagPart n)
+    where
+      displayComplex real 0 = displayBuilder real
+      displayComplex real imag =
+        (if real == 0 then "" else displayBuilder real)
+          <> (if signum imag == 1 then "+" else "")
+          <> displayBuilder imag
+          <> "i"
   displayBuilder (String s) = undefined -- TODO
   displayBuilder (Bool True) = "#t"
   displayBuilder (Bool False) = "#f"
