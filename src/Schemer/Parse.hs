@@ -20,13 +20,7 @@ charInString = noneOf "\\\"" <|> escapeSequence
 escapeSequence :: Parser Char
 escapeSequence =
   char '\\'
-    >> choice
-      [ char '"',
-        char '\\',
-        char 'n' >> return '\n',
-        char 'r' >> return '\r',
-        char 't' >> return '\t'
-      ]
+    >> choice [escaped <$ char escaping | (escaped, escaping) <- escapes]
 
 -- | Parse an atom (also known as symbol or identifier). From R5RS:
 --
@@ -183,13 +177,6 @@ parseChar :: Parser SExp
 parseChar = Char <$> ((tryCharNames <|> anyChar) <* endOfToken)
   where
     tryCharNames = choice [c <$ stringCI' name | (name, c) <- charNames]
-
--- | Character names, with the character they represent.
-charNames :: [(String, Char)]
-charNames =
-  [ ("space", ' '),
-    ("newline", '\n')
-  ]
 
 -- | Parse a case-insensitive string, without consuming matching prefix.
 stringCI' :: String -> Parser String

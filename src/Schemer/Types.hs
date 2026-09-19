@@ -34,7 +34,10 @@ instance Display SExp where
           <> (if signum imag == 1 then "+" else "")
           <> displayBuilder imag
           <> "i"
-  displayBuilder (String s) = undefined -- TODO
+  displayBuilder (String s) = "\"" <> foldMap escapeChar s <> "\""
+    where
+      escapeChar = displayBuilder . charString
+      charString c = maybe [c] (\n -> ['\\', n]) (lookup c escapes)
   displayBuilder (Bool True) = "#t"
   displayBuilder (Bool False) = "#f"
   displayBuilder (Char c) = "#\\" <> displayBuilder c -- TODO: show named chars
@@ -47,6 +50,23 @@ instance Display SExp where
   displayList (x : xs) = displayBuilder x <> foldMap go xs
     where
       go y = " " <> displayBuilder y
+
+-- | Escape characters, with the letter after @\\@.
+escapes :: [(Char, Char)]
+escapes =
+  [ ('\n', 'n'),
+    ('\r', 'r'),
+    ('\t', 't'),
+    ('"', '"'),
+    ('\\', '\\')
+  ]
+
+-- | Character names, with the character they represent.
+charNames :: [(String, Char)]
+charNames =
+  [ ("space", ' '),
+    ("newline", '\n')
+  ]
 
 -- | A real number in Scheme, which can be an integer, a rational
 -- or a float. Also used as the real/imag parts of a complex number.
