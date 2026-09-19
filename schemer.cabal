@@ -60,7 +60,8 @@ library
                       Schemer.Types
     build-depends:    base ^>=4.20.2.0,
                       parsec,
-                      vector
+                      vector,
+                      text-display
     hs-source-dirs:   src
     default-language: GHC2021
 

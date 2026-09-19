@@ -1,8 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Schemer.Types where
 
 import Data.Complex (Complex)
 import Data.Ratio (denominator, numerator)
-import Data.Vector (Vector)
+import Data.Text.Display (Display (displayBuilder, displayList))
+import Data.Vector (Vector, toList)
 
 data SExp
   = Atom String
@@ -20,6 +23,24 @@ data SExp
     Vector (Vector SExp)
   deriving (Show, Eq)
 
+instance Display SExp where
+  displayBuilder (Atom name) = displayBuilder name
+  displayBuilder (Real n) = displayBuilder n
+  displayBuilder (Complex n) = undefined -- TODO
+  displayBuilder (String s) = undefined -- TODO
+  displayBuilder (Bool True) = "#t"
+  displayBuilder (Bool False) = "#f"
+  displayBuilder (Char c) = "#\\" <> displayBuilder c -- TODO: show named chars
+  displayBuilder (List exps) = "(" <> displayList exps <> ")"
+  displayBuilder (DottedList init' last') =
+    "(" <> displayList init' <> " . " <> displayBuilder last' <> ")"
+  displayBuilder (Vector v) = "#(" <> displayList (toList v) <> ")"
+
+  displayList [] = ""
+  displayList (x : xs) = displayBuilder x <> foldMap go xs
+    where
+      go y = " " <> displayBuilder y
+
 -- | A real number in Scheme, which can be an integer, a rational
 -- or a float. Also used as the real/imag parts of a complex number.
 data RealNum
@@ -27,6 +48,14 @@ data RealNum
   | Rational Rational
   | Float Double
   deriving (Show, Eq)
+
+instance Display RealNum where
+  displayBuilder (Int n) = displayBuilder n
+  displayBuilder (Rational r) =
+    displayBuilder (numerator r)
+      <> "/"
+      <> displayBuilder (denominator r)
+  displayBuilder (Float n) = displayBuilder n
 
 -- TODO: Make `Complex RealNum` instance of `Num`.
 -- Can be done by implementing `RealFloat` for `RealNum`
