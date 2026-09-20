@@ -57,7 +57,8 @@ library
     import:           warnings
     exposed-modules:  Schemer,
                       Schemer.Parse,
-                      Schemer.Types
+                      Schemer.Types,
+                      Schemer.Eval
     build-depends:    base ^>=4.20.2.0,
                       parsec,
                       vector,

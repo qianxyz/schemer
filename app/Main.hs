@@ -6,6 +6,6 @@ import System.Environment
 main :: IO ()
 main = do
   (expr : _) <- getArgs
-  case readExpr expr of
+  case run expr of
     Left err -> putStrLn $ "Error: " ++ err
     Right val -> putStrLn $ "OK: " ++ val
