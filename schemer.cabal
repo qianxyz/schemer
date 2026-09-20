@@ -61,6 +61,7 @@ library
     build-depends:    base ^>=4.20.2.0,
                       parsec,
                       vector,
+                      text,
                       text-display
     hs-source-dirs:   src
     default-language: GHC2021
@@ -80,6 +81,7 @@ executable schemer
 
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.20.2.0,
+                      text,
                       schemer
 
     -- Directories containing source files.

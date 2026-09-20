@@ -3,6 +3,8 @@ module Schemer.Parse where
 import Data.Char (digitToInt, toLower, toUpper)
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
+import Data.Text (Text)
+import Data.Text.Display (display)
 import Data.Vector (fromList)
 import Schemer.Types
 import Text.Parsec
@@ -238,7 +240,7 @@ parseExpr =
     <|> parseUnquoted
     <|> parseListOrDotted
 
-readExpr :: String -> String
+readExpr :: String -> Either String Text
 readExpr input = case parse parseExpr "scheme" input of
-  Left err -> "No match: " ++ show err
-  Right val -> "Found value: " ++ show val
+  Left err -> Left $ show err
+  Right val -> Right $ display val
