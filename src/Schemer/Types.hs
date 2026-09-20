@@ -3,6 +3,8 @@
 module Schemer.Types where
 
 import Data.Complex (Complex, imagPart, realPart)
+import Data.List (intersperse)
+import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator)
 import Data.Text.Display (Display (displayBuilder, displayList))
 import Data.Vector (Vector, toList)
@@ -31,7 +33,7 @@ instance Display SExp where
       displayComplex real 0 = displayBuilder real
       displayComplex real imag =
         (if real == 0 then "" else displayBuilder real)
-          <> (if signum imag == 1 then "+" else "")
+          <> (if imag >= 0 then "+" else "")
           <> displayBuilder imag
           <> "i"
   displayBuilder (String s) = "\"" <> foldMap escapeChar s <> "\""
@@ -42,16 +44,13 @@ instance Display SExp where
   displayBuilder (Bool False) = "#f"
   displayBuilder (Char c) = "#\\" <> displayBuilder charLookup
     where
-      charLookup = maybe [c] id $ lookup c charNames
+      charLookup = fromMaybe [c] $ lookup c charNames
   displayBuilder (List exps) = "(" <> displayList exps <> ")"
   displayBuilder (DottedList init' last') =
     "(" <> displayList init' <> " . " <> displayBuilder last' <> ")"
   displayBuilder (Vector v) = "#(" <> displayList (toList v) <> ")"
 
-  displayList [] = ""
-  displayList (x : xs) = displayBuilder x <> foldMap go xs
-    where
-      go y = " " <> displayBuilder y
+  displayList = mconcat . intersperse " " . map displayBuilder
 
 -- | Escape characters, with the letter after @\\@.
 escapes :: [(Char, Char)]
@@ -100,11 +99,18 @@ fromRatio r
   | denominator r == 1 = Int (numerator r)
   | otherwise = Rational r
 
+-- | Convert a Scheme real number to a Haskell rational.
+--
+-- Note that this function is exact: Specifically, converting a float
+-- to a rational is exact, in the sense that IEEE floating point numbers
+-- that are finite are all rationals.
 toRatio :: RealNum -> Rational
 toRatio (Int a) = fromInteger a
 toRatio (Rational a) = a
 toRatio (Float a) = toRational a
 
+-- | Convert a Scheme real number to a Haskell double.
+-- Note that this is a lossy conversion.
 toDouble :: RealNum -> Double
 toDouble (Int a) = fromInteger a
 toDouble (Rational a) = fromRational a
@@ -150,3 +156,7 @@ instance Fractional RealNum where
     | isFloat a || isFloat b = Float (toDouble a / toDouble b)
     -- int / int should produce a rational
     | otherwise = fromRatio (toRatio a / toRatio b)
+
+instance Ord RealNum where
+  -- toRatio is exact so we use it to compare
+  compare x y = compare (toRatio x) (toRatio y)

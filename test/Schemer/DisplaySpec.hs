@@ -48,6 +48,16 @@ spec = do
       display (Complex (0 :+ 2)) `shouldBe` "+2i"
     it "displays a complex number with no imaginary part as a real" $
       display (Complex (3 :+ 0)) `shouldBe` "3"
+    it "displays float components" $
+      display (Complex (Float 1.5 :+ Float 2.5)) `shouldBe` "1.5+2.5i"
+    it "displays a negative float imaginary part" $
+      display (Complex (Float 1.5 :+ Float (-2.5))) `shouldBe` "1.5-2.5i"
+    it "displays a pure imaginary number with a float part" $
+      display (Complex (0 :+ Float 1.5)) `shouldBe` "+1.5i"
+    it "keeps an inexact zero imaginary part" $
+      display (Complex (1 :+ Float 0)) `shouldBe` "1+0.0i"
+    it "displays rational components" $
+      display (Complex (Rational (1 % 2) :+ Rational (1 % 3))) `shouldBe` "1/2+1/3i"
 
   describe "characters" $ do
     it "displays a letter" $
