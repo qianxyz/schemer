@@ -176,7 +176,7 @@ parseExprs = sepEndBy parseExpr spaces1
 parseChar :: Parser SExp
 parseChar = Char <$> ((tryCharNames <|> anyChar) <* endOfToken)
   where
-    tryCharNames = choice [c <$ stringCI' name | (name, c) <- charNames]
+    tryCharNames = choice [c <$ stringCI' name | (c, name) <- charNames]
 
 -- | Parse a case-insensitive string, without consuming matching prefix.
 stringCI' :: String -> Parser String

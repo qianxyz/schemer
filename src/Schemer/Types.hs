@@ -40,7 +40,9 @@ instance Display SExp where
       charString c = maybe [c] (\n -> ['\\', n]) (lookup c escapes)
   displayBuilder (Bool True) = "#t"
   displayBuilder (Bool False) = "#f"
-  displayBuilder (Char c) = "#\\" <> displayBuilder c -- TODO: show named chars
+  displayBuilder (Char c) = "#\\" <> displayBuilder charLookup
+    where
+      charLookup = maybe [c] id $ lookup c charNames
   displayBuilder (List exps) = "(" <> displayList exps <> ")"
   displayBuilder (DottedList init' last') =
     "(" <> displayList init' <> " . " <> displayBuilder last' <> ")"
@@ -62,10 +64,10 @@ escapes =
   ]
 
 -- | Character names, with the character they represent.
-charNames :: [(String, Char)]
+charNames :: [(Char, String)]
 charNames =
-  [ ("space", ' '),
-    ("newline", '\n')
+  [ (' ', "space"),
+    ('\n', "newline")
   ]
 
 -- | A real number in Scheme, which can be an integer, a rational
