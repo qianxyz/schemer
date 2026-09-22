@@ -171,6 +171,30 @@ spec = do
       it "rejects a trailing sign" $
         parseSExp "1+" `shouldSatisfy` isLeft
 
+    describe "complex numbers with a zero component" $ do
+      it "keeps an exact zero real part" $
+        parseSExp "0+2i" `shouldBe` Right (Number $ Complex (0 :+ 2))
+      it "keeps an inexact zero real part" $
+        parseSExp "0.0+2i" `shouldBe` Right (Number $ Complex (RFloat 0 :+ 2))
+      it "demotes an exact zero imaginary part" $
+        parseSExp "1+0i" `shouldBe` Right (Number $ Int 1)
+      it "demotes a negated exact zero imaginary part" $
+        parseSExp "1-0i" `shouldBe` Right (Number $ Int 1)
+      it "demotes a pure exact zero imaginary part" $
+        parseSExp "+0i" `shouldBe` Right (Number $ Int 0)
+      it "demotes a negated pure exact zero imaginary part" $
+        parseSExp "-0i" `shouldBe` Right (Number $ Int 0)
+      it "demotes a complex that is exactly zero" $
+        parseSExp "0+0i" `shouldBe` Right (Number $ Int 0)
+      it "demotes to an inexact real" $
+        parseSExp "1.0+0i" `shouldBe` Right (Number $ Float 1.0)
+      it "keeps an inexact zero imaginary part" $
+        parseSExp "1+0.0i" `shouldBe` Right (Number $ Complex (1 :+ RFloat 0))
+      it "demotes in a non-decimal radix" $
+        parseSExp "#x1+0i" `shouldBe` Right (Number $ Int 1)
+      it "keeps an exact zero real part in a non-decimal radix" $
+        parseSExp "#x0+Ai" `shouldBe` Right (Number $ Complex (0 :+ 10))
+
     describe "lists" $ do
       it "parses a flat list" $
         parseSExp "(a test)" `shouldBe` Right (List [Atom "a", Atom "test"])
