@@ -1,8 +1,11 @@
-module Schemer.Parse where
+module Schemer.Parse
+  ( readExpr,
+    parseExpr,
+  )
+where
 
 import Data.Char (digitToInt, toLower, toUpper)
 import Data.Complex (Complex ((:+)))
-import Data.Ratio ((%))
 import Data.Vector (fromList)
 import Schemer.Types
 import Text.Parsec
@@ -53,7 +56,7 @@ endOfToken = notFollowedBy $ noneOf " \n\t\r()\";"
 -- >              | +/- <ureal> [<imagPart>]
 -- > <imagPart> ::= +/- [<ureal>] i
 parseNumber :: Radix -> Parser SExp
-parseNumber radix = unsigned <|> signed
+parseNumber radix = Number <$> (unsigned <|> signed)
   where
     unsigned = parseUReal radix >>= attachImagPart -- <ureal> [<imagPart>]
     signed = do
@@ -95,18 +98,14 @@ parseUReal radix = do
   msep <- optionMaybe $ if radix == Dec then oneOf "/." else char '/'
   let toInt = digitsToInteger radix
   case msep of
-    Nothing -> return $ Int (toInt first)
+    Nothing -> return $ RInt (toInt first)
     Just sep -> do
       second <- parseDigits radix
       case sep of
-        '.' -> return $ Float (read (first ++ "." ++ second))
-        _ -> ratio (toInt first) (toInt second)
-
--- | Compose a rational (or int) from two integers.
--- Fail when the denominator is 0.
-ratio :: Integer -> Integer -> Parser RealNum
-ratio _ 0 = fail "Denominator cannot be zero"
-ratio num denom = return $ fromRatio (num % denom)
+        '.' -> return $ RFloat (read (first ++ "." ++ second))
+        _ ->
+          maybe (fail "Denominator cannot be 0") return $
+            ratio (toInt first) (toInt second)
 
 -- | The radix of a number, indicated by a prefix of
 -- @#b@, @#o@, @#d@ or @#x@.

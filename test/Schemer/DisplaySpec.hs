@@ -35,11 +35,11 @@ spec = do
     it "displays a negative integer" $
       display (Real (-42)) `shouldBe` "-42"
     it "displays a rational" $
-      display (Real (Rational (1 % 2))) `shouldBe` "1/2"
+      display (Real (RRational (1 % 2))) `shouldBe` "1/2"
     it "displays a negative rational" $
-      display (Real (Rational ((-1) % 2))) `shouldBe` "-1/2"
+      display (Real (RRational ((-1) % 2))) `shouldBe` "-1/2"
     it "displays a float" $
-      display (Real (Float 1.5)) `shouldBe` "1.5"
+      display (Real (RFloat 1.5)) `shouldBe` "1.5"
     it "displays a complex number with a positive imaginary part" $
       display (Complex (1 :+ 2)) `shouldBe` "1+2i"
     it "displays a complex number with a negative imaginary part" $
@@ -49,15 +49,15 @@ spec = do
     it "displays a complex number with no imaginary part as a real" $
       display (Complex (3 :+ 0)) `shouldBe` "3"
     it "displays float components" $
-      display (Complex (Float 1.5 :+ Float 2.5)) `shouldBe` "1.5+2.5i"
+      display (Complex (RFloat 1.5 :+ RFloat 2.5)) `shouldBe` "1.5+2.5i"
     it "displays a negative float imaginary part" $
-      display (Complex (Float 1.5 :+ Float (-2.5))) `shouldBe` "1.5-2.5i"
+      display (Complex (RFloat 1.5 :+ RFloat (-2.5))) `shouldBe` "1.5-2.5i"
     it "displays a pure imaginary number with a float part" $
-      display (Complex (0 :+ Float 1.5)) `shouldBe` "+1.5i"
+      display (Complex (0 :+ RFloat 1.5)) `shouldBe` "+1.5i"
     it "keeps an inexact zero imaginary part" $
-      display (Complex (1 :+ Float 0)) `shouldBe` "1+0.0i"
+      display (Complex (1 :+ RFloat 0)) `shouldBe` "1+0.0i"
     it "displays rational components" $
-      display (Complex (Rational (1 % 2) :+ Rational (1 % 3))) `shouldBe` "1/2+1/3i"
+      display (Complex (RRational (1 % 2) :+ RRational (1 % 3))) `shouldBe` "1/2+1/3i"
 
   describe "characters" $ do
     it "displays a letter" $
@@ -89,7 +89,7 @@ spec = do
 
   describe "vectors" $ do
     it "displays a vector" $
-      display (Vector (fromList [Real 1, Real 2])) `shouldBe` "#(1 2)"
+      display (Vector (fromList [Number $ Int 1, Number $ Int 2])) `shouldBe` "#(1 2)"
     it "displays an empty vector" $
       display (Vector (fromList [])) `shouldBe` "#()"
 

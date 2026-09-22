@@ -3,8 +3,7 @@ module Schemer.Eval where
 import Schemer.Types
 
 eval :: SExp -> SExp
-eval e@(Real _) = e
-eval e@(Complex _) = e
+eval e@(Number _) = e
 eval e@(String _) = e
 eval e@(Bool _) = e
 eval e@(Char _) = e

@@ -40,7 +40,7 @@ spec = do
       it "parses ... inside a list" $
         parseSExp "(a ...)" `shouldBe` Right (List [Atom "a", Atom "..."])
       it "parses + as the operator in a call" $
-        parseSExp "(+ 1 2)" `shouldBe` Right (List [Atom "+", Real 1, Real 2])
+        parseSExp "(+ 1 2)" `shouldBe` Right (List [Atom "+", Number $ Int 1, Number $ Int 2])
       it "rejects a sign followed by a letter" $
         parseSExp "+a" `shouldSatisfy` isLeft
       it "rejects four dots" $
@@ -93,29 +93,29 @@ spec = do
   describe "numbers" $ do
     describe "integers" $ do
       it "parses a decimal" $
-        parseSExp "123" `shouldBe` Right (Real 123)
+        parseSExp "123" `shouldBe` Right (Number $ Int 123)
       it "parses a #d decimal" $
-        parseSExp "#d123" `shouldBe` Right (Real 123)
+        parseSExp "#d123" `shouldBe` Right (Number $ Int 123)
       it "parses a binary" $
-        parseSExp "#b1010" `shouldBe` Right (Real 10)
+        parseSExp "#b1010" `shouldBe` Right (Number $ Int 10)
       it "parses an octal" $
-        parseSExp "#o12" `shouldBe` Right (Real 10)
+        parseSExp "#o12" `shouldBe` Right (Number $ Int 10)
       it "parses a hexadecimal" $
-        parseSExp "#xA" `shouldBe` Right (Real 10)
+        parseSExp "#xA" `shouldBe` Right (Number $ Int 10)
       it "parses a positive sign" $
-        parseSExp "+1" `shouldBe` Right (Real 1)
+        parseSExp "+1" `shouldBe` Right (Number $ Int 1)
       it "parses a negative sign" $
-        parseSExp "-1" `shouldBe` Right (Real (-1))
+        parseSExp "-1" `shouldBe` Right (Number $ Int (-1))
 
     describe "floats" $ do
       it "parses a decimal float" $
-        parseSExp "1.5" `shouldBe` Right (Real $ Float 1.5)
+        parseSExp "1.5" `shouldBe` Right (Number $ Float 1.5)
       it "parses a #d decimal float" $
-        parseSExp "#d1.5" `shouldBe` Right (Real $ Float 1.5)
+        parseSExp "#d1.5" `shouldBe` Right (Number $ Float 1.5)
       it "parses a positive float" $
-        parseSExp "+1.5" `shouldBe` Right (Real $ Float 1.5)
+        parseSExp "+1.5" `shouldBe` Right (Number $ Float 1.5)
       it "parses a negative float" $
-        parseSExp "-1.5" `shouldBe` Right (Real $ Float (-1.5))
+        parseSExp "-1.5" `shouldBe` Right (Number $ Float (-1.5))
       it "rejects a float with no integer part" $
         parseSExp ".5" `shouldSatisfy` isLeft
       it "rejects a float with no fractional part" $
@@ -123,47 +123,47 @@ spec = do
 
     describe "rationals" $ do
       it "parses a rational" $
-        parseSExp "1/2" `shouldBe` Right (Real $ Rational (1 % 2))
+        parseSExp "1/2" `shouldBe` Right (Number $ Rational (1 % 2))
       it "parses a negative rational" $
-        parseSExp "-1/2" `shouldBe` Right (Real $ Rational ((-1) % 2))
+        parseSExp "-1/2" `shouldBe` Right (Number $ Rational ((-1) % 2))
       it "parses a hex rational" $
-        parseSExp "#x1/A" `shouldBe` Right (Real $ Rational (1 % 10))
+        parseSExp "#x1/A" `shouldBe` Right (Number $ Rational (1 % 10))
       it "parses a binary rational" $
-        parseSExp "#b101/11" `shouldBe` Right (Real $ Rational (5 % 3))
+        parseSExp "#b101/11" `shouldBe` Right (Number $ Rational (5 % 3))
       it "normalises a rational with denominator 1 to an integer" $
-        parseSExp "4/2" `shouldBe` Right (Real 2)
+        parseSExp "4/2" `shouldBe` Right (Number $ Int 2)
       it "rejects a zero denominator" $
         parseSExp "1/0" `shouldSatisfy` isLeft
 
     describe "complex numbers" $ do
       it "parses real plus imaginary" $
-        parseSExp "1+2i" `shouldBe` Right (Complex (1 :+ 2))
+        parseSExp "1+2i" `shouldBe` Right (Number $ Complex (1 :+ 2))
       it "parses real minus imaginary" $
-        parseSExp "1-2i" `shouldBe` Right (Complex (1 :+ (-2)))
+        parseSExp "1-2i" `shouldBe` Right (Number $ Complex (1 :+ (-2)))
       it "parses real plus unit imaginary" $
-        parseSExp "1+i" `shouldBe` Right (Complex (1 :+ 1))
+        parseSExp "1+i" `shouldBe` Right (Number $ Complex (1 :+ 1))
       it "parses real minus unit imaginary" $
-        parseSExp "1-i" `shouldBe` Right (Complex (1 :+ (-1)))
+        parseSExp "1-i" `shouldBe` Right (Number $ Complex (1 :+ (-1)))
       it "parses +i" $
-        parseSExp "+i" `shouldBe` Right (Complex (0 :+ 1))
+        parseSExp "+i" `shouldBe` Right (Number $ Complex (0 :+ 1))
       it "parses -i" $
-        parseSExp "-i" `shouldBe` Right (Complex (0 :+ (-1)))
+        parseSExp "-i" `shouldBe` Right (Number $ Complex (0 :+ (-1)))
       it "parses a pure imaginary" $
-        parseSExp "+2i" `shouldBe` Right (Complex (0 :+ 2))
+        parseSExp "+2i" `shouldBe` Right (Number $ Complex (0 :+ 2))
       it "parses a negative pure imaginary" $
-        parseSExp "-2i" `shouldBe` Right (Complex (0 :+ (-2)))
+        parseSExp "-2i" `shouldBe` Right (Number $ Complex (0 :+ (-2)))
       it "parses float components" $
-        parseSExp "1.5+2.5i" `shouldBe` Right (Complex (Float 1.5 :+ Float 2.5))
+        parseSExp "1.5+2.5i" `shouldBe` Right (Number $ Complex (RFloat 1.5 :+ RFloat 2.5))
       it "parses rational components" $
         parseSExp "1/2+1/3i"
-          `shouldBe` Right (Complex (Rational (1 % 2) :+ Rational (1 % 3)))
+          `shouldBe` Right (Number $ Complex (RRational (1 % 2) :+ RRational (1 % 3)))
       it "parses mixed negative components" $
         parseSExp "-1/2-1.5i"
-          `shouldBe` Right (Complex (Rational ((-1) % 2) :+ Float (-1.5)))
+          `shouldBe` Right (Number $ Complex (RRational ((-1) % 2) :+ RFloat (-1.5)))
       it "parses a hex complex" $
-        parseSExp "#x1+Ai" `shouldBe` Right (Complex (1 :+ 10))
+        parseSExp "#x1+Ai" `shouldBe` Right (Number $ Complex (1 :+ 10))
       it "parses a binary complex" $
-        parseSExp "#b1+1i" `shouldBe` Right (Complex (1 :+ 1))
+        parseSExp "#b1+1i" `shouldBe` Right (Number $ Complex (1 :+ 1))
       it "rejects a zero denominator in the real part" $
         parseSExp "1/0+i" `shouldSatisfy` isLeft
       it "rejects a sign with no imaginary unit" $
@@ -219,11 +219,12 @@ spec = do
 
     describe "vectors" $ do
       it "parses a flat vector" $
-        parseSExp "#(1 2 3)" `shouldBe` Right (Vector (fromList [Real 1, Real 2, Real 3]))
+        parseSExp "#(1 2 3)"
+          `shouldBe` Right (Vector (fromList [Number $ Int 1, Number $ Int 2, Number $ Int 3]))
       it "parses an empty vector" $
         parseSExp "#()" `shouldBe` Right (Vector (fromList []))
       it "parses a vector with spaces after ( and before )" $
-        parseSExp "#( 1 2 )" `shouldBe` Right (Vector (fromList [Real 1, Real 2]))
+        parseSExp "#( 1 2 )" `shouldBe` Right (Vector (fromList [Number $ Int 1, Number $ Int 2]))
       it "parses nested lists and vectors" $
         parseSExp "#(a (b c) #(d))"
           `shouldBe` Right
