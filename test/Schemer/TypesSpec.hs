@@ -2,7 +2,8 @@
 
 module Schemer.TypesSpec (spec) where
 
-import Data.Complex (Complex ((:+)))
+import Control.Monad (unless)
+import Data.Complex (Complex ((:+)), magnitude)
 import Data.Ratio ((%))
 import Data.Text (Text, pack)
 import Data.Text.Display (display)
@@ -18,6 +19,18 @@ branch (Int _) = "int"
 branch (Rational _) = "rational"
 branch (Float _) = "float"
 branch (Complex _) = "complex"
+
+-- | Numeric equality up to a relative tolerance, ignoring exactness.
+shouldBeNumerically :: Number -> Number -> Expectation
+shouldBeNumerically actual expected =
+  unless (magnitude (a - e) <= 1e-12 * max 1 (magnitude e)) $
+    expectationFailure $
+      "expected numerically: " ++ show expected ++ "\n but got: " ++ show actual
+  where
+    a = toComplexDouble actual
+    e = toComplexDouble expected
+
+infix 1 `shouldBeNumerically`
 
 -- | Parse a string, then display the result again.
 roundTrip :: String -> Either String Text
@@ -80,6 +93,49 @@ spec = do
       ratio 1 2 `shouldBe` Just (RRational (1 % 2))
     it "normalises the sign onto the numerator" $
       ratio 1 (-2) `shouldBe` Just (RRational ((-1) % 2))
+
+  describe "safeDiv" $ do
+    let c a b = Complex (a :+ b)
+    it "gives an exact rational for exact integers" $
+      safeDiv (Int 1) (Int 3) `shouldBe` Just (Rational (1 % 3))
+    it "demotes an exact quotient to an integer" $
+      safeDiv (Int 4) (Int 2) `shouldBe` Just (Int 2)
+    it "rejects an exact zero divisor" $
+      safeDiv (Int 1) (Int 0) `shouldBe` Nothing
+    it "rejects an exact zero divisor for a complex dividend" $
+      safeDiv (c 1 2) (Int 0) `shouldBe` Nothing
+    it "gives infinity for an inexact zero divisor" $
+      safeDiv (Int 1) (Float 0) `shouldBe` Just (Float (1 / 0))
+    it "divides exact complex numbers exactly" $
+      safeDiv (c 1 2) (c 3 4) `shouldBe` Just (c (RRational (11 % 25)) (RRational (2 % 25)))
+    it "demotes a complex quotient with an exact zero imaginary part" $
+      safeDiv (c 2 2) (c 1 1) `shouldBe` Just (Int 2)
+    it "keeps exactness per component when dividing by a real" $
+      safeDiv (c (RFloat 1) 2) (Int 2) `shouldBe` Just (c (RFloat 0.5) 1)
+    it "makes both parts inexact when the divisor has an inexact part" $
+      safeDiv (c 1 2) (c 3 (RFloat 4)) `shouldBe` Just (c (RFloat 0.44) (RFloat 0.08))
+    it "does not overflow for large inexact operands" $
+      safeDiv (c (RFloat 1e200) (RFloat 1e200)) (c (RFloat 1e200) (RFloat 1e200))
+        `shouldBe` Just (c (RFloat 1) (RFloat 0))
+    it "does not overflow for an inexact dividend and a large exact divisor" $ do
+      let big = RInt (10 ^ (200 :: Int))
+      safeDiv (c (RFloat 1e200) (RFloat 1e200)) (c big big)
+        `shouldBe` Just (c (RFloat 1) (RFloat 0))
+
+  describe "abs and signum" $ do
+    let c a b = Complex (a :+ b)
+    it "keeps abs of an exact real exact" $
+      abs (Int (-3)) `shouldBe` Int 3
+    it "gives the magnitude of a complex" $
+      abs (c 3 4) `shouldBeNumerically` Int 5
+    it "does not overflow computing a large magnitude" $
+      abs (c (RFloat 1e200) (RFloat 1e200)) `shouldBeNumerically` Float (sqrt 2 * 1e200)
+    it "keeps signum of an exact real exact" $
+      signum (Rational ((-1) % 2)) `shouldBe` Int (-1)
+    it "gives the unit complex in the same direction" $
+      signum (c 3 4) `shouldBeNumerically` c (RRational (3 % 5)) (RRational (4 % 5))
+    it "gives an inexact zero for signum of an inexact zero complex" $
+      signum (c (RFloat 0) (RFloat 0)) `shouldBe` Float 0
 
   describe "Display" $ do
     describe "atoms" $ do

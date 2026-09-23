@@ -12,7 +12,8 @@ module Schemer.Types
     pattern Float,
     pattern Real,
     pattern Complex,
-    -- toComplex,
+    safeDiv,
+    toComplexDouble,
 
     -- * Real numbers
     RealNum,
@@ -20,12 +21,6 @@ module Schemer.Types
     pattern RRational,
     pattern RFloat,
     ratio,
-    -- isFloat,
-    -- isNonNegative,
-    -- toRatio,
-    -- toDouble,
-    -- liftUnary,
-    -- liftBinary,
 
     -- * Lexical tables
     escapes,
@@ -33,7 +28,7 @@ module Schemer.Types
   )
 where
 
-import Data.Complex (Complex ((:+)))
+import Data.Complex (Complex ((:+)), magnitude)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
@@ -118,7 +113,67 @@ toComplex :: Number -> Complex RealNum
 toComplex (Complex c) = c
 toComplex (Real r) = r :+ 0
 
--- TODO: Implement Num for Number
+-- | Convert a Scheme number to a Haskell @Complex Double@.
+-- Used for inexact numeric operations.
+toComplexDouble :: Number -> Complex Double
+toComplexDouble (Real r) = toDouble r :+ 0
+toComplexDouble (Complex (r :+ i)) = toDouble r :+ toDouble i
+
+-- | Convert a Haskell @Complex Double@ to a Scheme number.
+-- Used for inexact numeric operations.
+fromComplexDouble :: Complex Double -> Number
+fromComplexDouble (r :+ i) = Complex (RFloat r :+ RFloat i)
+
+instance Num Number where
+  fromInteger = Int
+
+  (Real r1) + (Real r2) = Real (r1 + r2)
+  n1 + n2 =
+    let (r1 :+ i1) = toComplex n1
+        (r2 :+ i2) = toComplex n2
+     in Complex ((r1 + r2) :+ (i1 + i2))
+  (Real r1) - (Real r2) = Real (r1 - r2)
+  n1 - n2 =
+    let (r1 :+ i1) = toComplex n1
+        (r2 :+ i2) = toComplex n2
+     in Complex ((r1 - r2) :+ (i1 - i2))
+  (Real r1) * (Real r2) = Real (r1 * r2)
+  n1 * n2 =
+    let (r1 :+ i1) = toComplex n1
+        (r2 :+ i2) = toComplex n2
+     in Complex ((r1 * r2 - i1 * i2) :+ (r1 * i2 + r2 * i1))
+
+  negate (Real r) = Real (negate r)
+  negate (Complex (r :+ i)) = Complex (negate r :+ negate i)
+
+  abs (Real r) = Real (abs r)
+  abs (Complex (r :+ i)) = Float $ magnitude (toDouble r :+ toDouble i)
+
+  signum (Real r) = Real (signum r)
+  signum n
+    | m == 0 = Float 0
+    | otherwise = fromComplexDouble $ dn / (m :+ 0)
+    where
+      dn = toComplexDouble n
+      m = magnitude dn
+
+safeDiv :: Number -> Number -> Maybe Number
+safeDiv (Real r1) (Real r2) = Real <$> safeDivR r1 r2
+safeDiv n1 (Real r2) = do
+  let (r1 :+ i1) = toComplex n1
+  r <- safeDivR r1 r2
+  i <- safeDivR i1 r2
+  return $ Complex (r :+ i)
+safeDiv n1 n2@(Complex (r2 :+ i2)) =
+  if isFloat r1 || isFloat i1 || isFloat r2 || isFloat i2
+    then return . fromComplexDouble $ toComplexDouble n1 / toComplexDouble n2
+    else do
+      let mag2 = r2 * r2 + i2 * i2
+      r <- safeDivR (r1 * r2 + i1 * i2) mag2
+      i <- safeDivR (r2 * i1 - r1 * i2) mag2
+      return $ Complex (r :+ i)
+  where
+    (r1 :+ i1) = toComplex n1
 
 -- | A real number in Scheme, which can be an integer, a rational
 -- or a float. Also used as the real/imag parts of a complex number.
@@ -220,6 +275,12 @@ instance Num RealNum where
   abs = liftUnary abs abs abs
   signum = liftUnary signum signum signum
   negate = liftUnary negate negate negate
+
+safeDivR :: RealNum -> RealNum -> Maybe RealNum
+safeDivR a b
+  | b == RInt 0 = Nothing
+  | isFloat a || isFloat b = Just . RFloat $ toDouble a / toDouble b
+  | otherwise = Just . RRational $ toRatio a / toRatio b
 
 -- | Escape characters, with the letter after @\\@.
 escapes :: [(Char, Char)]
