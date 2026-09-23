@@ -147,6 +147,8 @@ instance Num Number where
   negate (Complex (r :+ i)) = Complex (negate r :+ negate i)
 
   abs (Real r) = Real (abs r)
+  -- abs and signum are always inexact for complex, even when they can
+  -- be exact, e.g. 3+4i. This is allowed in R5RS.
   abs (Complex (r :+ i)) = Float $ magnitude (toDouble r :+ toDouble i)
 
   signum (Real r) = Real (signum r)
