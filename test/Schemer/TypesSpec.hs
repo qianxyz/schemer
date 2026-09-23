@@ -2,8 +2,7 @@
 
 module Schemer.TypesSpec (spec) where
 
-import Control.Monad (unless)
-import Data.Complex (Complex ((:+)), magnitude)
+import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
 import Data.Text (Text, pack)
 import Data.Text.Display (display)
@@ -19,18 +18,6 @@ branch (Int _) = "int"
 branch (Rational _) = "rational"
 branch (Float _) = "float"
 branch (Complex _) = "complex"
-
--- | Numeric equality up to a relative tolerance, ignoring exactness.
-shouldBeNumerically :: Number -> Number -> Expectation
-shouldBeNumerically actual expected =
-  unless (magnitude (a - e) <= 1e-12 * max 1 (magnitude e)) $
-    expectationFailure $
-      "expected numerically: " ++ show expected ++ "\n but got: " ++ show actual
-  where
-    a = toComplexDouble actual
-    e = toComplexDouble expected
-
-infix 1 `shouldBeNumerically`
 
 -- | Parse a string, then display the result again.
 roundTrip :: String -> Either String Text
@@ -127,13 +114,15 @@ spec = do
     it "keeps abs of an exact real exact" $
       abs (Int (-3)) `shouldBe` Int 3
     it "gives the magnitude of a complex" $
-      abs (c 3 4) `shouldBeNumerically` Int 5
+      toComplexDouble (abs (c 3 4)) `shouldBe` toComplexDouble (Int 5)
     it "does not overflow computing a large magnitude" $
-      abs (c (RFloat 1e200) (RFloat 1e200)) `shouldBeNumerically` Float (sqrt 2 * 1e200)
+      toComplexDouble (abs (c (RFloat 1e200) (RFloat 1e200)))
+        `shouldBe` toComplexDouble (Float (sqrt 2 * 1e200))
     it "keeps signum of an exact real exact" $
       signum (Rational ((-1) % 2)) `shouldBe` Int (-1)
     it "gives the unit complex in the same direction" $
-      signum (c 3 4) `shouldBeNumerically` c (RRational (3 % 5)) (RRational (4 % 5))
+      toComplexDouble (signum (c 3 4))
+        `shouldBe` toComplexDouble (c (RRational (3 % 5)) (RRational (4 % 5)))
     it "gives an inexact zero for signum of an inexact zero complex" $
       signum (c (RFloat 0) (RFloat 0)) `shouldBe` Float 0
 
