@@ -13,7 +13,6 @@ module Schemer.Types
     pattern Real,
     pattern Complex,
     safeDiv,
-    toComplexDouble,
 
     -- * Real numbers
     RealNum,
