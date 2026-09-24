@@ -63,7 +63,8 @@ library
                       parsec,
                       vector,
                       text,
-                      text-display
+                      text-display,
+                      integer-roots
     hs-source-dirs:   src
     default-language: GHC2021
 

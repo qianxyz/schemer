@@ -34,6 +34,7 @@ import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import Data.Text.Display (Display (displayBuilder, displayList))
 import Data.Vector (Vector, toList)
+import Math.NumberTheory.Roots (exactSquareRoot)
 
 data SExp
   = Atom String
@@ -147,17 +148,21 @@ instance Num Number where
   negate (Complex (r :+ i)) = Complex (negate r :+ negate i)
 
   abs (Real r) = Real (abs r)
-  -- abs and signum are always inexact for complex, even when they can
-  -- be exact, e.g. 3+4i. This is allowed in R5RS.
-  abs (Complex (r :+ i)) = Float $ magnitude (toDouble r :+ toDouble i)
+  abs (Complex c) = Real $ exactMagnitude c
 
   signum (Real r) = Real (signum r)
-  signum n
-    | m == 0 = Float 0
-    | otherwise = fromComplexDouble $ dn / (m :+ 0)
+  signum (Complex c@(r :+ i))
+    | m == RFloat 0 = Float 0
+    | otherwise = Complex (ur :+ ui)
     where
-      dn = toComplexDouble n
-      m = magnitude dn
+      m = exactMagnitude c
+      ur = fromMaybe 0 $ safeDivR r m -- cannot be Nothing
+      ui = fromMaybe 0 $ safeDivR i m -- cannot be Nothing
+
+exactMagnitude :: Complex RealNum -> RealNum
+exactMagnitude (r :+ i)
+  | Just m <- exactSquareRootR $ r * r + i * i = m
+  | otherwise = RFloat . magnitude $ (toDouble r :+ toDouble i)
 
 safeDiv :: Number -> Number -> Maybe Number
 safeDiv (Real r1) (Real r2) = Real <$> safeDivR r1 r2
@@ -283,6 +288,14 @@ safeDivR a b
   | b == RInt 0 = Nothing
   | isFloat a || isFloat b = Just . RFloat $ toDouble a / toDouble b
   | otherwise = Just . RRational $ toRatio a / toRatio b
+
+exactSquareRootR :: RealNum -> Maybe RealNum
+exactSquareRootR (RInt n) = RInt <$> exactSquareRoot n
+exactSquareRootR (RRational r) = do
+  a <- exactSquareRoot $ numerator r
+  b <- exactSquareRoot $ denominator r
+  return . RRational $ a % b
+exactSquareRootR (RFloat _) = Nothing
 
 -- | Escape characters, with the letter after @\\@.
 escapes :: [(Char, Char)]
