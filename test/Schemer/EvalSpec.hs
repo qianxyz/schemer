@@ -2,6 +2,7 @@ module Schemer.EvalSpec (spec) where
 
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
+import Data.Vector (fromList)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
@@ -28,6 +29,11 @@ spec = do
       evalString "#t" `shouldBe` Right (Bool True)
     it "evaluates a character to itself" $
       evalString "#\\a" `shouldBe` Right (Char 'a')
+    it "evaluates a vector to itself" $
+      evalString "#(1 2)" `shouldBe` Right (Vector (fromList [Number (Int 1), Number (Int 2)]))
+    it "does not evaluate the elements of a vector" $
+      evalString "#(1 (+ 1 2))"
+        `shouldBe` Right (Vector (fromList [Number (Int 1), List [Atom "+", Number (Int 1), Number (Int 2)]]))
 
   describe "quote" $ do
     it "returns a quoted atom unevaluated" $
@@ -99,3 +105,44 @@ spec = do
       "(+ 1 (* 2 3))" `evaluatesTo` Int 7
     it "evaluates deeply nested arithmetic" $
       "(/ (- 10 (* 2 3)) (+ 1 1))" `evaluatesTo` Int 2
+
+  describe "type predicates" $ do
+    let isTrue source = evalString source `shouldBe` Right (Bool True)
+        isFalse source = evalString source `shouldBe` Right (Bool False)
+    describe "boolean?" $ do
+      it "accepts #t" $ isTrue "(boolean? #t)"
+      it "accepts #f" $ isTrue "(boolean? #f)"
+      it "rejects a number" $ isFalse "(boolean? 0)"
+    describe "symbol?" $ do
+      it "accepts a quoted symbol" $ isTrue "(symbol? 'a)"
+      it "accepts a quoted peculiar identifier" $ isTrue "(symbol? '+)"
+      it "rejects a string" $ isFalse "(symbol? \"a\")"
+    describe "char?" $ do
+      it "accepts a character" $ isTrue "(char? #\\a)"
+      it "rejects a one-character string" $ isFalse "(char? \"a\")"
+    describe "vector?" $ do
+      it "accepts a vector" $ isTrue "(vector? '#(1 2))"
+      it "accepts an empty vector" $ isTrue "(vector? '#())"
+      it "rejects a list" $ isFalse "(vector? '(1 2))"
+    describe "pair?" $ do
+      it "accepts a non-empty list" $ isTrue "(pair? '(1 2))"
+      it "accepts a single-element list" $ isTrue "(pair? '(1))"
+      it "accepts a dotted list" $ isTrue "(pair? '(1 . 2))"
+      it "rejects the empty list" $ isFalse "(pair? '())"
+      it "rejects a vector" $ isFalse "(pair? '#(1 2))"
+      it "rejects a symbol" $ isFalse "(pair? 'a)"
+    describe "number?" $ do
+      it "accepts an integer" $ isTrue "(number? 1)"
+      it "accepts a rational" $ isTrue "(number? 1/2)"
+      it "accepts a float" $ isTrue "(number? 1.5)"
+      it "accepts a complex number" $ isTrue "(number? 1+2i)"
+      it "rejects a quoted symbol" $ isFalse "(number? 'a)"
+    describe "string?" $ do
+      it "accepts a string" $ isTrue "(string? \"abc\")"
+      it "accepts the empty string" $ isTrue "(string? \"\")"
+      it "rejects a character" $ isFalse "(string? #\\a)"
+    describe "null?" $ do
+      it "accepts the empty list" $ isTrue "(null? '())"
+      it "rejects a non-empty list" $ isFalse "(null? '(1))"
+      it "rejects a dotted list" $ isFalse "(null? '(1 . 2))"
+      it "rejects an empty vector" $ isFalse "(null? '#())"
