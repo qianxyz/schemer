@@ -56,24 +56,38 @@ typePredicate :: (SExp -> Bool) -> [SExp] -> SExp
 typePredicate p [e] = Bool (p e)
 typePredicate _ _ = undefined
 
-isBoolean, isSymbol, isChar, isVector, isPair, isNumber, isString, isNull :: SExp -> Bool
+isBoolean :: SExp -> Bool
 isBoolean (Bool _) = True
 isBoolean _ = False
+
+isSymbol :: SExp -> Bool
 isSymbol (Atom _) = True
 isSymbol _ = False
+
+isChar :: SExp -> Bool
 isChar (Char _) = True
 isChar _ = False
+
+isVector :: SExp -> Bool
 isVector (Vector _) = True
 isVector _ = False
--- A pair is any non-empty list, proper or dotted.
+
+-- | A pair is any non-empty list, proper or dotted.
+isPair :: SExp -> Bool
 isPair (List (_ : _)) = True
 isPair (DottedList _ _) = True
 isPair _ = False
+
+isNumber :: SExp -> Bool
 isNumber (Number _) = True
 isNumber _ = False
+
+isString :: SExp -> Bool
 isString (String _) = True
 isString _ = False
--- Only the empty list is null.
+
+-- | Only the empty list is null.
+isNull :: SExp -> Bool
 isNull (List []) = True
 isNull _ = False
 
