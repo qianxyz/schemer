@@ -36,8 +36,20 @@ primitives =
     ("pair?", typePredicate isPair),
     ("number?", typePredicate isNumber),
     ("string?", typePredicate isString),
-    ("null?", typePredicate isNull)
+    ("null?", typePredicate isNull),
+    ("symbol->string", primSymbolToString),
+    ("string->symbol", primStringToSymbol)
   ]
+
+-- | Convert a symbol to its name.
+primSymbolToString :: [SExp] -> SExp
+primSymbolToString [Atom name] = String name
+primSymbolToString _ = undefined
+
+-- | Convert a string to the symbol with that name.
+primStringToSymbol :: [SExp] -> SExp
+primStringToSymbol [String name] = Atom name
+primStringToSymbol _ = undefined
 
 -- | Lift a predicate on one expression to a primitive taking one argument.
 typePredicate :: (SExp -> Bool) -> [SExp] -> SExp

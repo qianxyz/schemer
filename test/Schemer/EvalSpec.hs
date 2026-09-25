@@ -146,3 +146,17 @@ spec = do
       it "rejects a non-empty list" $ isFalse "(null? '(1))"
       it "rejects a dotted list" $ isFalse "(null? '(1 . 2))"
       it "rejects an empty vector" $ isFalse "(null? '#())"
+
+  describe "symbol conversions" $ do
+    it "converts a symbol to its name" $
+      evalString "(symbol->string 'abc)" `shouldBe` Right (String "abc")
+    it "converts a string to a symbol" $
+      evalString "(string->symbol \"abc\")" `shouldBe` Right (Atom "abc")
+    it "preserves case when converting a string to a symbol" $
+      evalString "(string->symbol \"ABC\")" `shouldBe` Right (Atom "ABC")
+    it "builds a symbol that could not be written as a literal" $
+      evalString "(string->symbol \"hello world\")" `shouldBe` Right (Atom "hello world")
+    it "round trips a string through a symbol" $
+      evalString "(symbol->string (string->symbol \"x\"))" `shouldBe` Right (String "x")
+    it "produces a value that symbol? accepts" $
+      evalString "(symbol? (string->symbol \"abc\"))" `shouldBe` Right (Bool True)

@@ -31,6 +31,9 @@ escapeSequence =
 -- > <initial>    ::= <letter> | ! $ % & * / : < = > ? ^ _ ~
 -- > <subsequent> ::= <initial> | <digit> | + - . @
 -- > <peculiar identifier> ::= + | - | ...
+--
+-- Note that identifiers are case-sensitive, following R7RS rather
+-- than R5RS: @abc@ and @ABC@ are different symbols.
 parseAtom :: Parser SExp
 parseAtom =
   Atom
