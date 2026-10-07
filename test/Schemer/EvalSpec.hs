@@ -3,14 +3,15 @@ module Schemer.EvalSpec (spec) where
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
 import Data.Vector (fromList)
+import Schemer.Error (ThrowsError)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
 import Test.Hspec
 
 -- | Parse a string and evaluate the resulting expression.
-evalString :: String -> Either String SExp
-evalString source = eval <$> readExpr source
+evalString :: String -> ThrowsError SExp
+evalString source = readExpr source >>= eval
 
 -- | Assert that a source string evaluates to the given number.
 evaluatesTo :: String -> Number -> Expectation

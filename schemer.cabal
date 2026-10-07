@@ -58,7 +58,8 @@ library
     exposed-modules:  Schemer,
                       Schemer.Parse,
                       Schemer.Types,
-                      Schemer.Eval
+                      Schemer.Eval,
+                      Schemer.Error
     build-depends:    base ^>=4.20.2.0,
                       parsec,
                       vector,

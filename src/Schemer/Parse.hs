@@ -7,6 +7,7 @@ where
 import Data.Char (digitToInt, toLower, toUpper)
 import Data.Complex (Complex ((:+)))
 import Data.Vector (fromList)
+import Schemer.Error
 import Schemer.Types
 import Text.Parsec
 import Text.Parsec.String (Parser)
@@ -107,7 +108,7 @@ parseUReal radix = do
       case sep of
         '.' -> return $ RFloat (read (first ++ "." ++ second))
         _ ->
-          maybe (fail "Denominator cannot be 0") return $
+          maybe (fail "Invalid rational literal: zero denominator") return $
             ratio (toInt first) (toInt second)
 
 -- | The radix of a number, indicated by a prefix of
@@ -240,7 +241,7 @@ parseExpr =
     <|> parseUnquoted
     <|> parseListOrDotted
 
-readExpr :: String -> Either String SExp
+readExpr :: String -> ThrowsError SExp
 readExpr input = case parse parseExpr "scheme" input of
-  Left err -> Left $ show err
-  Right val -> Right val
+  Left err -> throwError $ ParseError err
+  Right val -> return val
