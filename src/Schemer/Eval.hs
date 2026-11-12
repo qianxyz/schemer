@@ -10,8 +10,9 @@ eval e@(String _) = return e
 eval e@(Bool _) = return e
 eval e@(Char _) = return e
 eval e@(Vector _) = return e
--- TODO: treat (quote a b) as malformed quote
 eval (List [Atom "quote", e]) = return e
+eval e@(List (Atom "quote" : _)) =
+  throwError $ BadSpecialForm "Malformed quote form" e
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval e = throwError $ BadSpecialForm "Unrecognized special form" e
 
@@ -78,8 +79,6 @@ primMinusDiv op _ (fe : exprs) = do
   ns <- mapM assertNumber exprs
   res <- foldM op fn ns
   return $ Number res
-
--- primMinusDiv op _ exprs = Number . foldl1 op $ map assertNumber exprs
 
 primIntPair :: (Integer -> Integer -> Integer) -> [SExp] -> ThrowsError SExp
 primIntPair op [a, b] = do
