@@ -30,10 +30,9 @@ primitives =
     ("-", primMinusDiv (\a b -> return $ a - b) 0),
     ("*", primPlusMult (*) 1),
     ("/", primMinusDiv (divThrow) 1),
-    -- TODO: handle zero divisor for
-    ("modulo", primIntPair mod),
-    ("quotient", primIntPair quot),
-    ("remainder", primIntPair rem),
+    ("modulo", primMods mod),
+    ("quotient", primMods quot),
+    ("remainder", primMods rem),
     -- type-testing
     ("boolean?", typePredicate isBoolean),
     ("symbol?", typePredicate isSymbol),
@@ -80,12 +79,15 @@ primMinusDiv op _ (fe : exprs) = do
   res <- foldM op fn ns
   return $ Number res
 
-primIntPair :: (Integer -> Integer -> Integer) -> [SExp] -> ThrowsError SExp
-primIntPair op [a, b] = do
+primMods :: (Integer -> Integer -> Integer) -> [SExp] -> ThrowsError SExp
+primMods op [a, b] = do
   ia <- assertInt a
   ib <- assertInt b
-  return . Number . Int $ op ia ib
-primIntPair _ e = throwError $ NumArgs "2" e
+  if ib == 0
+    then throwError $ ZeroDivision
+    else
+      return . Number . Int $ op ia ib
+primMods _ e = throwError $ NumArgs "2" e
 
 -- | Convert a symbol to its name.
 primSymbolToString :: [SExp] -> ThrowsError SExp

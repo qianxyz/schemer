@@ -3,7 +3,7 @@ module Schemer.EvalSpec (spec) where
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
 import Data.Vector (fromList)
-import Schemer.Error (ThrowsError)
+import Schemer.Error (SchemeError (ZeroDivision), ThrowsError)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
@@ -100,6 +100,14 @@ spec = do
       "(modulo -7 2)" `evaluatesTo` Int 1
     it "modulo with a negative divisor" $
       "(modulo 7 -2)" `evaluatesTo` Int (-1)
+    it "modulo by zero is an error" $
+      evalString "(modulo 7 0)" `shouldBe` Left ZeroDivision
+    it "quotient by zero is an error" $
+      evalString "(quotient 7 0)" `shouldBe` Left ZeroDivision
+    it "remainder by zero is an error" $
+      evalString "(remainder 7 0)" `shouldBe` Left ZeroDivision
+    it "allows a zero dividend" $
+      "(modulo 0 7)" `evaluatesTo` Int 0
 
   describe "nested expressions" $ do
     it "evaluates arguments before applying" $
