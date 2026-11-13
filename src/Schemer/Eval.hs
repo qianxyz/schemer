@@ -26,13 +26,13 @@ apply func args =
 primitives :: [(String, [SExp] -> ThrowsError SExp)]
 primitives =
   [ -- numerical operations
-    ("+", primPlusMult (+) 0),
-    ("-", primMinusDiv (\a b -> return $ a - b) 0),
-    ("*", primPlusMult (*) 1),
-    ("/", primMinusDiv (divThrow) 1),
-    ("modulo", primMods mod),
-    ("quotient", primMods quot),
-    ("remainder", primMods rem),
+    ("+", numeric $ pure . sum),
+    ("-", numeric subtractAll),
+    ("*", numeric $ pure . product),
+    ("/", numeric divideAll),
+    ("modulo", integerDivision mod),
+    ("quotient", integerDivision quot),
+    ("remainder", integerDivision rem),
     -- type-testing
     ("boolean?", typePredicate isBoolean),
     ("symbol?", typePredicate isSymbol),
@@ -43,63 +43,58 @@ primitives =
     ("string?", typePredicate isString),
     ("null?", typePredicate isNull),
     -- symbol handling
-    ("symbol->string", primSymbolToString),
-    ("string->symbol", primStringToSymbol)
+    ("symbol->string", symbolToString),
+    ("string->symbol", stringToSymbol)
   ]
 
-assertInt :: SExp -> ThrowsError Integer
-assertInt (Number (Int a)) = return a
-assertInt e = throwError $ TypeMismatch "int" e
+expectInt :: SExp -> ThrowsError Integer
+expectInt (Number (Int a)) = return a
+expectInt e = throwError $ TypeMismatch "int" e
 
-assertNumber :: SExp -> ThrowsError Number
-assertNumber (Number a) = return a
-assertNumber e = throwError $ TypeMismatch "number" e
+expectNumber :: SExp -> ThrowsError Number
+expectNumber (Number a) = return a
+expectNumber e = throwError $ TypeMismatch "number" e
 
-divThrow :: Number -> Number -> ThrowsError Number
-divThrow a b = case safeDiv a b of
-  Nothing -> throwError $ ZeroDivision
-  Just x -> return x
+-- | Lift an operation on numbers to one on S-expressions.
+numeric :: ([Number] -> ThrowsError Number) -> [SExp] -> ThrowsError SExp
+numeric f args = Number <$> (traverse expectNumber args >>= f)
 
-primPlusMult ::
-  (Number -> Number -> Number) -> Number -> [SExp] -> ThrowsError SExp
-primPlusMult op zero exprs =
-  mapM assertNumber exprs
-    >>= return . Number . foldl op zero
+-- | (- z) negates; (- z1 z2 ...) subtracts left to right.
+subtractAll :: [Number] -> ThrowsError Number
+subtractAll [] = throwError $ NumArgs ">= 1" []
+subtractAll [n] = return $ negate n
+subtractAll (n : ns) = return $ foldl (-) n ns
 
-primMinusDiv ::
-  (Number -> Number -> ThrowsError Number) ->
-  Number ->
-  [SExp] ->
-  ThrowsError SExp
-primMinusDiv _ _ [] = throwError $ NumArgs ">= 1" []
-primMinusDiv op zero [e] = assertNumber e >>= op zero >>= return . Number
-primMinusDiv op _ (fe : exprs) = do
-  fn <- assertNumber fe
-  ns <- mapM assertNumber exprs
-  res <- foldM op fn ns
-  return $ Number res
+-- | (/ z) takes the reciprocal; (/ z1 z2 ...) divides left to right.
+divideAll :: [Number] -> ThrowsError Number
+divideAll [] = throwError $ NumArgs ">= 1" []
+divideAll [n] = divide 1 n
+divideAll (n : ns) = foldM divide n ns
 
-primMods :: (Integer -> Integer -> Integer) -> [SExp] -> ThrowsError SExp
-primMods op [a, b] = do
-  ia <- assertInt a
-  ib <- assertInt b
-  if ib == 0
-    then throwError $ ZeroDivision
-    else
-      return . Number . Int $ op ia ib
-primMods _ e = throwError $ NumArgs "2" e
+divide :: Number -> Number -> ThrowsError Number
+divide a b = maybe (throwError ZeroDivision) pure (safeDiv a b)
+
+-- | A binary integer operation that rejects a zero divisor.
+integerDivision ::
+  (Integer -> Integer -> Integer) -> [SExp] -> ThrowsError SExp
+integerDivision op [a, b] = do
+  ia <- expectInt a
+  ib <- expectInt b
+  when (ib == 0) $ throwError ZeroDivision
+  return . Number . Int $ op ia ib
+integerDivision _ e = throwError $ NumArgs "2" e
 
 -- | Convert a symbol to its name.
-primSymbolToString :: [SExp] -> ThrowsError SExp
-primSymbolToString [Atom name] = return $ String name
-primSymbolToString [e] = throwError $ TypeMismatch "symbol" e
-primSymbolToString e = throwError $ NumArgs "1" e
+symbolToString :: [SExp] -> ThrowsError SExp
+symbolToString [Atom name] = return $ String name
+symbolToString [e] = throwError $ TypeMismatch "symbol" e
+symbolToString e = throwError $ NumArgs "1" e
 
 -- | Convert a string to the symbol with that name.
-primStringToSymbol :: [SExp] -> ThrowsError SExp
-primStringToSymbol [String name] = return $ Atom name
-primStringToSymbol [e] = throwError $ TypeMismatch "string" e
-primStringToSymbol e = throwError $ NumArgs "1" e
+stringToSymbol :: [SExp] -> ThrowsError SExp
+stringToSymbol [String name] = return $ Atom name
+stringToSymbol [e] = throwError $ TypeMismatch "string" e
+stringToSymbol e = throwError $ NumArgs "1" e
 
 -- | Lift a predicate on one expression to a primitive taking one argument.
 typePredicate :: (SExp -> Bool) -> [SExp] -> ThrowsError SExp
