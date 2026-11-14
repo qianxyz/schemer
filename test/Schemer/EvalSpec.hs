@@ -3,7 +3,7 @@ module Schemer.EvalSpec (spec) where
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
 import Data.Vector (fromList)
-import Schemer.Error (SchemeError (ZeroDivision), ThrowsError)
+import Schemer.Error (SchemeError (NumArgs, TypeMismatch, ZeroDivision), ThrowsError)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
@@ -108,6 +108,41 @@ spec = do
       evalString "(remainder 7 0)" `shouldBe` Left ZeroDivision
     it "allows a zero dividend" $
       "(modulo 0 7)" `evaluatesTo` Int 0
+
+  describe "numerical comparisons" $ do
+    let isTrue source = evalString source `shouldBe` Right (Bool True)
+        isFalse source = evalString source `shouldBe` Right (Bool False)
+    describe "=" $ do
+      it "accepts equal integers" $ isTrue "(= 1 1)"
+      it "rejects different integers" $ isFalse "(= 1 2)"
+      it "holds across exactness" $ isTrue "(= 1 1.0)"
+      it "compares an exact rational with a float" $ isTrue "(= 1/2 0.5)"
+      it "compares exactly rather than through doubles" $
+        isFalse "(= 9007199254740993 9007199254740992.0)"
+      it "compares complex numbers" $ isTrue "(= 1+2i 1+2i)"
+      it "treats an inexact zero imaginary part as real" $ isTrue "(= 1+0.0i 1)"
+      it "chains over all arguments" $ isFalse "(= 1 1 2)"
+    describe "<" $ do
+      it "accepts an increasing sequence" $ isTrue "(< 1 2 3)"
+      it "rejects a repeated value" $ isFalse "(< 1 2 2)"
+      it "compares across exactness" $ isTrue "(< 1/3 0.34)"
+    describe ">" $ do
+      it "accepts a decreasing sequence" $ isTrue "(> 3 2.5 1)"
+      it "rejects an increasing pair" $ isFalse "(> 1 2)"
+    describe "<=" $ do
+      it "accepts a non-decreasing sequence" $ isTrue "(<= 1 2 2)"
+      it "rejects a decrease" $ isFalse "(<= 2 1)"
+    describe ">=" $ do
+      it "accepts a non-increasing sequence" $ isTrue "(>= 2 2 1)"
+      it "rejects an increase" $ isFalse "(>= 1 2)"
+    describe "errors" $ do
+      it "requires at least two arguments" $
+        evalString "(< 1)" `shouldBe` Left (NumArgs ">= 2" [Number (Int 1)])
+      it "rejects a complex argument to an ordering" $
+        evalString "(< 1 1+i)"
+          `shouldBe` Left (TypeMismatch "real" (Number (Complex (1 :+ 1))))
+      it "type-checks every argument before comparing" $
+        evalString "(< 2 1 'a)" `shouldBe` Left (TypeMismatch "real" (Atom "a"))
 
   describe "nested expressions" $ do
     it "evaluates arguments before applying" $

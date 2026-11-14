@@ -33,6 +33,12 @@ primitives =
     ("modulo", integerDivision mod),
     ("quotient", integerDivision quot),
     ("remainder", integerDivision rem),
+    -- numerical comparisons
+    ("=", chain expectNumber numEq),
+    ("<", chain expectReal $ ordered (== LT)),
+    (">", chain expectReal $ ordered (== GT)),
+    ("<=", chain expectReal $ ordered (/= GT)),
+    (">=", chain expectReal $ ordered (/= LT)),
     -- type-testing
     ("boolean?", typePredicate isBoolean),
     ("symbol?", typePredicate isSymbol),
@@ -54,6 +60,10 @@ expectInt e = throwError $ TypeMismatch "int" e
 expectNumber :: SExp -> ThrowsError Number
 expectNumber (Number a) = return a
 expectNumber e = throwError $ TypeMismatch "number" e
+
+expectReal :: SExp -> ThrowsError RealNum
+expectReal (Number (Real r)) = return r
+expectReal e = throwError $ TypeMismatch "real" e
 
 -- | Lift an operation on numbers to one on S-expressions.
 numeric :: ([Number] -> ThrowsError Number) -> [SExp] -> ThrowsError SExp
@@ -83,6 +93,19 @@ integerDivision op [a, b] = do
   when (ib == 0) $ throwError ZeroDivision
   return . Number . Int $ op ia ib
 integerDivision _ e = throwError $ NumArgs "2" e
+
+-- | Check that a relation holds between each adjacent pair of
+-- arguments: (< a b c) means a < b and b < c.
+chain ::
+  (SExp -> ThrowsError a) -> (a -> a -> Bool) -> [SExp] -> ThrowsError SExp
+chain expect rel args
+  | length args < 2 = throwError $ NumArgs ">= 2" args
+  | otherwise = do
+      xs <- traverse expect args
+      return . Bool . and $ zipWith rel xs (drop 1 xs)
+
+ordered :: (Ordering -> Bool) -> RealNum -> RealNum -> Bool
+ordered ok a b = ok (compareReal a b)
 
 -- | Convert a symbol to its name.
 symbolToString :: [SExp] -> ThrowsError SExp

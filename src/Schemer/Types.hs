@@ -13,6 +13,7 @@ module Schemer.Types
     pattern Real,
     pattern Complex,
     safeDiv,
+    numEq,
 
     -- * Real numbers
     RealNum,
@@ -20,6 +21,7 @@ module Schemer.Types
     pattern RRational,
     pattern RFloat,
     ratio,
+    compareReal,
 
     -- * Lexical tables
     escapes,
@@ -28,6 +30,7 @@ module Schemer.Types
 where
 
 import Data.Complex (Complex ((:+)), magnitude)
+import Data.Function (on)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
@@ -163,6 +166,15 @@ exactMagnitude (r :+ i)
   | Just m <- exactSquareRootR $ r * r + i * i = m
   | otherwise = RFloat . magnitude $ (toDouble r :+ toDouble i)
 
+-- | Numeric equality, which also holds across exactness:
+-- 1 = 1.0 and 1+0.0i = 1.
+numEq :: Number -> Number -> Bool
+numEq a b = realEq r1 r2 && realEq i1 i2
+  where
+    (r1 :+ i1) = toComplex a
+    (r2 :+ i2) = toComplex b
+    realEq x y = compareReal x y == EQ
+
 safeDiv :: Number -> Number -> Maybe Number
 safeDiv (Real r1) (Real r2) = Real <$> safeDivR r1 r2
 safeDiv n1 (Real r2) = do
@@ -281,6 +293,12 @@ instance Num RealNum where
   abs = liftUnary abs abs abs
   signum = liftUnary signum signum signum
   negate = liftUnary negate negate negate
+
+-- | Numeric comparison across exactness. Floats are converted to
+-- exact rationals, so the comparison is exact and transitive.
+-- Unspecified for non-finite floats.
+compareReal :: RealNum -> RealNum -> Ordering
+compareReal = compare `on` toRatio
 
 safeDivR :: RealNum -> RealNum -> Maybe RealNum
 safeDivR a b
