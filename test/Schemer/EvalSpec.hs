@@ -198,6 +198,62 @@ spec = do
     it "requires at least two arguments" $
       evalString "(string=? \"a\")" `shouldBe` Left (NumArgs ">= 2" [String "a"])
 
+  describe "pairs and lists" $ do
+    let n = Number . Int
+        evalsTo source v = evalString source `shouldBe` Right v
+    describe "car" $ do
+      it "returns the first element of a list" $
+        "(car '(1 2 3))" `evalsTo` n 1
+      it "returns a list element unevaluated" $
+        "(car '((1) 2))" `evalsTo` List [n 1]
+      it "returns the first element of a dotted list" $
+        "(car '(1 . 2))" `evalsTo` n 1
+      it "rejects the empty list" $
+        evalString "(car '())" `shouldBe` Left (TypeMismatch "pair" (List []))
+      it "rejects a non-list" $
+        evalString "(car 'a)" `shouldBe` Left (TypeMismatch "pair" (Atom "a"))
+      it "rejects two arguments" $
+        evalString "(car '(1) '(2))" `shouldBe` Left (NumArgs "1" [List [n 1], List [n 2]])
+    describe "cdr" $ do
+      it "returns the rest of a list" $
+        "(cdr '(1 2 3))" `evalsTo` List [n 2, n 3]
+      it "returns the empty list for a single-element list" $
+        "(cdr '(1))" `evalsTo` List []
+      it "returns the tail of a pair" $
+        "(cdr '(1 . 2))" `evalsTo` n 2
+      it "returns the rest of a longer dotted list" $
+        "(cdr '(1 2 . 3))" `evalsTo` DottedList [n 2] (n 3)
+      it "rejects the empty list" $
+        evalString "(cdr '())" `shouldBe` Left (TypeMismatch "pair" (List []))
+      it "rejects a vector" $
+        evalString "(cdr '#(1 2))" `shouldBe` Left (TypeMismatch "pair" (Vector (fromList [n 1, n 2])))
+      it "rejects no arguments" $
+        evalString "(cdr)" `shouldBe` Left (NumArgs "1" [])
+    describe "cons" $ do
+      it "prepends to a list" $
+        "(cons 1 '(2 3))" `evalsTo` List [n 1, n 2, n 3]
+      it "builds a single-element list from the empty list" $
+        "(cons 1 '())" `evalsTo` List [n 1]
+      it "builds a pair from two non-lists" $
+        "(cons 1 2)" `evalsTo` DottedList [n 1] (n 2)
+      it "prepends to a dotted list" $
+        "(cons 1 '(2 . 3))" `evalsTo` DottedList [n 1, n 2] (n 3)
+      it "conses a list onto a list" $
+        "(cons '(1) '(2))" `evalsTo` List [List [n 1], n 2]
+      it "evaluates its arguments" $
+        "(cons (+ 1 1) '())" `evalsTo` List [n 2]
+      it "rejects one argument" $
+        evalString "(cons 1)" `shouldBe` Left (NumArgs "2" [n 1])
+    describe "round trips" $ do
+      it "rebuilds a list from its car and cdr" $
+        "(cons (car '(1 2 3)) (cdr '(1 2 3)))" `evalsTo` List [n 1, n 2, n 3]
+      it "rebuilds a dotted list from its car and cdr" $
+        "(cons (car '(1 2 . 3)) (cdr '(1 2 . 3)))" `evalsTo` DottedList [n 1, n 2] (n 3)
+      it "takes apart a cons with car" $
+        "(car (cons 1 2))" `evalsTo` n 1
+      it "takes apart a cons with cdr" $
+        "(cdr (cons 1 2))" `evalsTo` n 2
+
   describe "nested expressions" $ do
     it "evaluates arguments before applying" $
       "(+ 1 (* 2 3))" `evaluatesTo` Int 7

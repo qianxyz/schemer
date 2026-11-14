@@ -71,7 +71,11 @@ primitives =
     ("null?", typePredicate isNull),
     -- symbol handling
     ("symbol->string", symbolToString),
-    ("string->symbol", stringToSymbol)
+    ("string->symbol", stringToSymbol),
+    -- pairs and lists
+    ("car", car),
+    ("cdr", cdr),
+    ("cons", cons)
   ]
 
 expectInt :: SExp -> ThrowsError Integer
@@ -187,3 +191,22 @@ isString _ = False
 isNull :: SExp -> Bool
 isNull (List []) = True
 isNull _ = False
+
+car :: [SExp] -> ThrowsError SExp
+car [List (x : _)] = return x
+car [DottedList (x : _) _] = return x
+car [badArg] = throwError $ TypeMismatch "pair" badArg
+car badArgList = throwError $ NumArgs "1" badArgList
+
+cdr :: [SExp] -> ThrowsError SExp
+cdr [List (_ : xs)] = return $ List xs
+cdr [DottedList [_] x] = return x
+cdr [DottedList (_ : xs) x] = return $ DottedList xs x
+cdr [badArg] = throwError $ TypeMismatch "pair" badArg
+cdr badArgList = throwError $ NumArgs "1" badArgList
+
+cons :: [SExp] -> ThrowsError SExp
+cons [x, List xs] = return . List $ x : xs
+cons [x, DottedList xs xlast] = return $ DottedList (x : xs) xlast
+cons [x1, x2] = return $ DottedList [x1] x2
+cons badArgList = throwError $ NumArgs "2" badArgList
