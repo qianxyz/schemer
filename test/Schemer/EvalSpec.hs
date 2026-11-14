@@ -144,6 +144,27 @@ spec = do
       it "type-checks every argument before comparing" $
         evalString "(< 2 1 'a)" `shouldBe` Left (TypeMismatch "real" (Atom "a"))
 
+  describe "string comparisons" $ do
+    let isTrue source = evalString source `shouldBe` Right (Bool True)
+        isFalse source = evalString source `shouldBe` Right (Bool False)
+    it "string=? accepts equal strings" $ isTrue "(string=? \"abc\" \"abc\")"
+    it "string=? is case sensitive" $ isFalse "(string=? \"abc\" \"ABC\")"
+    it "string<? orders lexicographically" $ isTrue "(string<? \"abc\" \"abd\")"
+    it "string<? puts a prefix first" $ isTrue "(string<? \"ab\" \"abc\")"
+    it "string<? rejects equal strings" $ isFalse "(string<? \"abc\" \"abc\")"
+    it "string>? accepts a greater string" $ isTrue "(string>? \"b\" \"abc\")"
+    it "string<=? accepts equal strings" $ isTrue "(string<=? \"abc\" \"abc\")"
+    it "string>=? rejects a smaller string" $ isFalse "(string>=? \"abc\" \"abd\")"
+    it "string-ci=? ignores case" $ isTrue "(string-ci=? \"abc\" \"ABC\")"
+    it "string-ci<? ignores case" $ isTrue "(string-ci<? \"abc\" \"ABD\")"
+    it "string<? is case sensitive where string-ci<? is not" $
+      isTrue "(string<? \"B\" \"a\")"
+    it "string-ci>? ignores case" $ isTrue "(string-ci>? \"B\" \"a\")"
+    it "requires string arguments" $
+      evalString "(string=? \"a\" 'a)" `shouldBe` Left (TypeMismatch "string" (Atom "a"))
+    it "requires at least two arguments" $
+      evalString "(string=? \"a\")" `shouldBe` Left (NumArgs ">= 2" [String "a"])
+
   describe "nested expressions" $ do
     it "evaluates arguments before applying" $
       "(+ 1 (* 2 3))" `evaluatesTo` Int 7

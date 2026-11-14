@@ -1,6 +1,8 @@
 module Schemer.Eval where
 
 import Control.Monad
+import Data.Char (toLower)
+import Data.Function (on)
 import Schemer.Error
 import Schemer.Types
 
@@ -39,6 +41,17 @@ primitives =
     (">", chain expectReal $ ordered (== GT)),
     ("<=", chain expectReal $ ordered (/= GT)),
     (">=", chain expectReal $ ordered (/= LT)),
+    -- string comparisons
+    ("string=?", chain expectString (==)),
+    ("string<?", chain expectString (<)),
+    ("string>?", chain expectString (>)),
+    ("string<=?", chain expectString (<=)),
+    ("string>=?", chain expectString (>=)),
+    ("string-ci=?", chain expectString $ caseInsensitive (==)),
+    ("string-ci<?", chain expectString $ caseInsensitive (<)),
+    ("string-ci>?", chain expectString $ caseInsensitive (>)),
+    ("string-ci<=?", chain expectString $ caseInsensitive (<=)),
+    ("string-ci>=?", chain expectString $ caseInsensitive (>=)),
     -- type-testing
     ("boolean?", typePredicate isBoolean),
     ("symbol?", typePredicate isSymbol),
@@ -64,6 +77,10 @@ expectNumber e = throwError $ TypeMismatch "number" e
 expectReal :: SExp -> ThrowsError RealNum
 expectReal (Number (Real r)) = return r
 expectReal e = throwError $ TypeMismatch "real" e
+
+expectString :: SExp -> ThrowsError String
+expectString (String s) = return s
+expectString e = throwError $ TypeMismatch "string" e
 
 -- | Lift an operation on numbers to one on S-expressions.
 numeric :: ([Number] -> ThrowsError Number) -> [SExp] -> ThrowsError SExp
@@ -106,6 +123,10 @@ chain expect rel args
 
 ordered :: (Ordering -> Bool) -> RealNum -> RealNum -> Bool
 ordered ok a b = ok (compareReal a b)
+
+-- | Compare strings after folding them to lower case.
+caseInsensitive :: (String -> String -> Bool) -> String -> String -> Bool
+caseInsensitive rel = rel `on` map toLower
 
 -- | Convert a symbol to its name.
 symbolToString :: [SExp] -> ThrowsError SExp
