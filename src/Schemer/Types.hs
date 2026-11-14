@@ -6,20 +6,12 @@ module Schemer.Types
     SExp (Atom, Number, String, Bool, Char, List, DottedList, Vector),
 
     -- * Numbers
-    Number,
-    pattern Int,
-    pattern Rational,
-    pattern Float,
-    pattern Real,
-    pattern Complex,
+    Number (Int, Rational, Float, Real, Complex),
     safeDiv,
     numEq,
 
     -- * Real numbers
-    RealNum,
-    pattern RInt,
-    pattern RRational,
-    pattern RFloat,
+    RealNum (RInt, RRational, RFloat),
     ratio,
     compareReal,
 
@@ -47,7 +39,7 @@ data SExp
   | List [SExp]
   | -- | A list ending in a non-nil element, for example
     -- @(a b . c)@ (shorthand for @(cons a (cons b c))@).
-    -- Raw constructor is hidden; Use @DottedList@.
+    -- Raw constructor is hidden; Use 'DottedList'.
     MkDottedList [SExp] SExp
   | -- | A data structure indexed by range of integers
     -- starting from 0. Represented as e.g. @#(a b c)@.
@@ -221,23 +213,18 @@ safeDiv n1 n2@(Complex (r2 :+ i2)) =
 -- number also cannot have its numerator be 0, so the integer 0 is
 -- the unique representation of the exact 0.
 data RealNum
-  = MkInt Integer
-  | MkRational Rational
-  | MkFloat Double
+  = RInt Integer
+  | -- | Hidden: build rationals through 'RRational'.
+    MkRational Rational
+  | RFloat Double
   deriving (Show, Eq)
-
-pattern RInt :: Integer -> RealNum
-pattern RInt n = MkInt n
 
 pattern RRational :: Rational -> RealNum
 pattern RRational r <- MkRational r
   where
     RRational r
-      | denominator r == 1 = MkInt (numerator r)
+      | denominator r == 1 = RInt (numerator r)
       | otherwise = MkRational r
-
-pattern RFloat :: Double -> RealNum
-pattern RFloat f = MkFloat f
 
 {-# COMPLETE RInt, RRational, RFloat #-}
 
