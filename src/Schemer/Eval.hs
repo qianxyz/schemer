@@ -15,6 +15,14 @@ eval e@(Vector _) = return e
 eval (List [Atom "quote", e]) = return e
 eval e@(List (Atom "quote" : _)) =
   throwError $ BadSpecialForm "Malformed quote form" e
+eval (List [Atom "if", predicate, conseq, alt]) =
+  do
+    result <- eval predicate
+    case result of
+      Bool False -> eval alt
+      _ -> eval conseq
+eval e@(List (Atom "if" : _)) =
+  throwError $ BadSpecialForm "Malformed if form" e
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval e = throwError $ BadSpecialForm "Unrecognized special form" e
 

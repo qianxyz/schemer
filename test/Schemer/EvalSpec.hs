@@ -3,7 +3,7 @@ module Schemer.EvalSpec (spec) where
 import Data.Complex (Complex ((:+)))
 import Data.Ratio ((%))
 import Data.Vector (fromList)
-import Schemer.Error (SchemeError (NumArgs, TypeMismatch, ZeroDivision), ThrowsError)
+import Schemer.Error (SchemeError (BadSpecialForm, NumArgs, TypeMismatch, ZeroDivision), ThrowsError)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
@@ -44,6 +44,39 @@ spec = do
         `shouldBe` Right (List [Atom "+", Number (Int 1), Number (Int 2)])
     it "treats the ' prefix the same as quote" $
       evalString "'(a b)" `shouldBe` Right (List [Atom "a", Atom "b"])
+
+  describe "if" $ do
+    it "evaluates the consequent when the test is true" $
+      "(if #t 1 2)" `evaluatesTo` Int 1
+    it "evaluates the alternative when the test is false" $
+      "(if #f 1 2)" `evaluatesTo` Int 2
+    it "evaluates the test expression" $
+      "(if (< 1 2) 1 2)" `evaluatesTo` Int 1
+    it "evaluates the chosen branch" $
+      "(if #t (+ 1 2) 0)" `evaluatesTo` Int 3
+    it "treats 0 as true" $
+      "(if 0 1 2)" `evaluatesTo` Int 1
+    it "treats the empty list as true" $
+      "(if '() 1 2)" `evaluatesTo` Int 1
+    it "treats the empty string as true" $
+      "(if \"\" 1 2)" `evaluatesTo` Int 1
+    it "does not evaluate the alternative when the test is true" $
+      "(if #t 1 (/ 1 0))" `evaluatesTo` Int 1
+    it "does not evaluate the consequent when the test is false" $
+      "(if #f (/ 1 0) 2)" `evaluatesTo` Int 2
+    it "nests in the test position" $
+      "(if (if #f #t #f) 1 2)" `evaluatesTo` Int 2
+    it "propagates an error from the test" $
+      evalString "(if (/ 1 0) 1 2)" `shouldBe` Left ZeroDivision
+    it "rejects an if with no arguments" $
+      evalString "(if)" `shouldBe` Left (BadSpecialForm "Malformed if form" (List [Atom "if"]))
+    it "rejects an if with too many arguments" $
+      evalString "(if #t 1 2 3)"
+        `shouldBe` Left
+          ( BadSpecialForm
+              "Malformed if form"
+              (List [Atom "if", Bool True, Number (Int 1), Number (Int 2), Number (Int 3)])
+          )
 
   describe "+" $ do
     it "returns 0 with no arguments" $
