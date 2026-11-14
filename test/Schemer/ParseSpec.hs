@@ -232,6 +232,13 @@ spec = do
         parseSExp "(a . b )" `shouldBe` Right (DottedList [Atom "a"] (Atom "b"))
       it "parses a dotted list with several leading elements" $
         parseSExp "(a b . c)" `shouldBe` Right (DottedList [Atom "a", Atom "b"] (Atom "c"))
+      it "normalizes a dotted list ending in the empty list" $
+        parseSExp "(a . ())" `shouldBe` Right (List [Atom "a"])
+      it "normalizes a dotted list ending in a list" $
+        parseSExp "(a . (b c))" `shouldBe` Right (List [Atom "a", Atom "b", Atom "c"])
+      it "flattens a dotted list ending in a dotted list" $
+        parseSExp "(a b . (c . d))"
+          `shouldBe` Right (DottedList [Atom "a", Atom "b", Atom "c"] (Atom "d"))
       it "rejects imbalanced parens" $
         parseSExp "(a '(imbalanced parens)" `shouldSatisfy` isLeft
       it "rejects a dot with nothing before it" $

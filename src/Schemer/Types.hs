@@ -3,7 +3,7 @@
 
 module Schemer.Types
   ( -- * Scheme expressions
-    SExp (..),
+    SExp (Atom, Number, String, Bool, Char, List, DottedList, Vector),
 
     -- * Numbers
     Number,
@@ -47,11 +47,31 @@ data SExp
   | List [SExp]
   | -- | A list ending in a non-nil element, for example
     -- @(a b . c)@ (shorthand for @(cons a (cons b c))@).
-    DottedList [SExp] SExp
+    -- Raw constructor is hidden; Use @DottedList@.
+    MkDottedList [SExp] SExp
   | -- | A data structure indexed by range of integers
     -- starting from 0. Represented as e.g. @#(a b c)@.
     Vector (Vector SExp)
   deriving (Show, Eq)
+
+-- | Smart constructor for dotted expressions.
+--
+-- Invariant: a dotted list has a non-empty prefix and a tail that is
+-- not itself a list. Building one keeps that invariant by flattening
+-- the tail, so the result may not be a dotted list at all:
+--
+-- > DottedList [a] (List [b, c])      == List [a, b, c]
+-- > DottedList [a] (DottedList [b] c) == DottedList [a, b] c
+-- > DottedList [] c                   == c
+pattern DottedList :: [SExp] -> SExp -> SExp
+pattern DottedList xs z <- MkDottedList xs z
+  where
+    DottedList xs (List ys) = List (xs ++ ys)
+    DottedList xs (MkDottedList ys z) = MkDottedList (xs ++ ys) z
+    DottedList [] z = z
+    DottedList xs z = MkDottedList xs z
+
+{-# COMPLETE Atom, Number, String, Bool, Char, List, DottedList, Vector #-}
 
 instance Display SExp where
   displayBuilder (Atom name) = displayBuilder name

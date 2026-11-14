@@ -244,6 +244,13 @@ spec = do
         "(cons (+ 1 1) '())" `evalsTo` List [n 2]
       it "rejects one argument" $
         evalString "(cons 1)" `shouldBe` Left (NumArgs "2" [n 1])
+    describe "canonical form" $ do
+      it "conses onto a dotted list ending in a list the same as onto a list" $
+        "(cons 0 '(1 . (2)))" `evalsTo` List [n 0, n 1, n 2]
+      it "takes the cdr of a normalized dotted list as a list" $
+        "(cdr '(1 . (2 3)))" `evalsTo` List [n 2, n 3]
+      it "treats (a . ()) as a proper list" $
+        "(null? (cdr '(1 . ())))" `evalsTo` Bool True
     describe "round trips" $ do
       it "rebuilds a list from its car and cdr" $
         "(cons (car '(1 2 3)) (cdr '(1 2 3)))" `evalsTo` List [n 1, n 2, n 3]

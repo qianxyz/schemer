@@ -200,13 +200,10 @@ car badArgList = throwError $ NumArgs "1" badArgList
 
 cdr :: [SExp] -> ThrowsError SExp
 cdr [List (_ : xs)] = return $ List xs
-cdr [DottedList [_] x] = return x
 cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch "pair" badArg
 cdr badArgList = throwError $ NumArgs "1" badArgList
 
 cons :: [SExp] -> ThrowsError SExp
-cons [x, List xs] = return . List $ x : xs
-cons [x, DottedList xs xlast] = return $ DottedList (x : xs) xlast
-cons [x1, x2] = return $ DottedList [x1] x2
+cons [x, y] = return $ DottedList [x] y
 cons badArgList = throwError $ NumArgs "2" badArgList
