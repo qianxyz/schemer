@@ -4,6 +4,7 @@ import Control.Monad
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Functor.Classes (liftEq)
+import Data.List (genericLength, genericReplicate)
 import Schemer.Error
 import Schemer.Types
 
@@ -132,6 +133,11 @@ primitives =
     -- symbol handling
     ("symbol->string", symbolToString),
     ("string->symbol", stringToSymbol),
+    -- strings
+    ("make-string", makeString),
+    ("string", string),
+    ("string-length", stringLength),
+    ("string-ref", stringRef),
     -- pairs and lists
     ("car", car),
     ("cdr", cdr),
@@ -157,6 +163,17 @@ expectReal e = throwError $ TypeMismatch "real" e
 expectString :: SExp -> ThrowsError String
 expectString (String s) = return s
 expectString e = throwError $ TypeMismatch "string" e
+
+expectChar :: SExp -> ThrowsError Char
+expectChar (Char c) = return c
+expectChar e = throwError $ TypeMismatch "char" e
+
+-- | An exact non-negative integer, such as a length.
+expectNatural :: SExp -> ThrowsError Integer
+expectNatural e = do
+  n <- expectInt e
+  when (n < 0) $ throwError $ TypeMismatch "non-negative integer" e
+  return n
 
 -- | Lift an operation on numbers to one on S-expressions.
 numeric :: ([Number] -> ThrowsError Number) -> [SExp] -> ThrowsError SExp
@@ -295,3 +312,30 @@ equal (DottedList xs x) (DottedList ys y) = liftEq equal xs ys && equal x y
 equal (Vector xs) (Vector ys) = liftEq equal xs ys
 equal (String a) (String b) = a == b
 equal a b = eqv a b
+
+-- | @(make-string k [char])@: a string of length k. Its contents are
+-- unspecified without a char; NUL characters are used.
+makeString :: [SExp] -> ThrowsError SExp
+makeString [k] = makeString [k, Char '\0']
+makeString [k, c] = do
+  n <- expectNatural k
+  ch <- expectChar c
+  return . String $ genericReplicate n ch
+makeString e = throwError $ NumArgs "1 or 2" e
+
+-- | @(string char ...)@: a string of the given characters.
+string :: [SExp] -> ThrowsError SExp
+string args = String <$> traverse expectChar args
+
+stringLength :: [SExp] -> ThrowsError SExp
+stringLength [s] = Number . Int . genericLength <$> expectString s
+stringLength e = throwError $ NumArgs "1" e
+
+-- | @(string-ref string k)@: the character at zero-based index k.
+stringRef :: [SExp] -> ThrowsError SExp
+stringRef [s, k] = do
+  str <- expectString s
+  i <- expectInt k
+  when (i < 0 || i >= genericLength str) $ throwError $ IndexOutOfRange i s
+  return . Char $ str !! fromInteger i
+stringRef e = throwError $ NumArgs "2" e

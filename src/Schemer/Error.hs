@@ -13,6 +13,8 @@ data SchemeError
   | TypeMismatch String SExp
   | NotFunction String String
   | BadSpecialForm String SExp
+  | -- | An index outside the valid range of the given object.
+    IndexOutOfRange Integer SExp
   deriving (Show, Eq)
 
 instance Display SchemeError where
@@ -32,6 +34,11 @@ instance Display SchemeError where
     displayBuilder message <> ": " <> displayBuilder func
   displayBuilder (BadSpecialForm message form) =
     displayBuilder message <> ": " <> displayBuilder form
+  displayBuilder (IndexOutOfRange index object) =
+    "Index out of range: "
+      <> displayBuilder index
+      <> " for "
+      <> displayBuilder object
 
 type ThrowsError = Either SchemeError
 

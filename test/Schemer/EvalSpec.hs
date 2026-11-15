@@ -260,6 +260,67 @@ spec = do
     it "requires at least two arguments" $
       isError "(string=? \"a\")"
 
+  describe "strings" $ do
+    let evalsTo source v = evalString source `shouldBe` Right v
+    describe "make-string" $ do
+      it "fills the string with the given character" $
+        "(make-string 3 #\\a)" `evalsTo` String "aaa"
+      it "makes an empty string" $
+        "(make-string 0 #\\a)" `evalsTo` String ""
+      it "makes a string of the given length without a fill character" $
+        "(string-length (make-string 3))" `evaluatesTo` Int 3
+      it "rejects a negative length" $
+        isError "(make-string -1 #\\a)"
+      it "rejects an inexact length" $
+        isError "(make-string 2.0 #\\a)"
+      it "rejects a fill that is not a character" $
+        isError "(make-string 2 \"a\")"
+      it "rejects no arguments" $
+        isError "(make-string)"
+      it "rejects three arguments" $
+        isError "(make-string 1 #\\a #\\b)"
+    describe "string" $ do
+      it "builds a string from characters" $
+        "(string #\\a #\\b #\\c)" `evalsTo` String "abc"
+      it "builds a single-character string" $
+        "(string #\\space)" `evalsTo` String " "
+      it "builds the empty string from no arguments" $
+        "(string)" `evalsTo` String ""
+      it "evaluates its arguments" $
+        "(string (string-ref \"xyz\" 1))" `evalsTo` String "y"
+      it "rejects a non-character" $
+        isError "(string #\\a \"b\")"
+    describe "string-length" $ do
+      it "counts the characters of a string" $
+        "(string-length \"abc\")" `evaluatesTo` Int 3
+      it "returns 0 for the empty string" $
+        "(string-length \"\")" `evaluatesTo` Int 0
+      it "counts an escaped character once" $
+        "(string-length \"a\\\"b\")" `evaluatesTo` Int 3
+      it "rejects a non-string" $
+        isError "(string-length 'abc)"
+      it "rejects two arguments" $
+        isError "(string-length \"a\" \"b\")"
+    describe "string-ref" $ do
+      it "returns the first character" $
+        "(string-ref \"abc\" 0)" `evalsTo` Char 'a'
+      it "returns the last character" $
+        "(string-ref \"abc\" 2)" `evalsTo` Char 'c'
+      it "works with a computed index" $
+        "(string-ref \"abc\" (- 3 2))" `evalsTo` Char 'b'
+      it "rejects an index equal to the length" $
+        isError "(string-ref \"abc\" 3)"
+      it "rejects a negative index" $
+        isError "(string-ref \"abc\" -1)"
+      it "rejects any index into the empty string" $
+        isError "(string-ref \"\" 0)"
+      it "rejects an inexact index" $
+        isError "(string-ref \"abc\" 1.0)"
+      it "rejects a non-string" $
+        isError "(string-ref 'abc 0)"
+      it "rejects one argument" $
+        isError "(string-ref \"abc\")"
+
   describe "pairs and lists" $ do
     let n = Number . Int
         evalsTo source v = evalString source `shouldBe` Right v
