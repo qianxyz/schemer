@@ -261,6 +261,42 @@ spec = do
       it "takes apart a cons with cdr" $
         "(cdr (cons 1 2))" `evalsTo` n 2
 
+  describe "equivalence predicates" $ do
+    let isTrue source = evalString source `shouldBe` Right (Bool True)
+        isFalse source = evalString source `shouldBe` Right (Bool False)
+    describe "eqv?" $ do
+      it "accepts the same symbol" $ isTrue "(eqv? 'a 'a)"
+      it "rejects different symbols" $ isFalse "(eqv? 'a 'b)"
+      it "accepts the same boolean" $ isTrue "(eqv? #f #f)"
+      it "rejects different booleans" $ isFalse "(eqv? #t #f)"
+      it "accepts the same character" $ isTrue "(eqv? #\\a #\\a)"
+      it "accepts equal exact numbers" $ isTrue "(eqv? 2 2)"
+      it "accepts equal rationals" $ isTrue "(eqv? 1/2 2/4)"
+      it "accepts equal inexact numbers" $ isTrue "(eqv? 1.5 1.5)"
+      it "rejects numbers of different exactness" $ isFalse "(eqv? 2 2.0)"
+      it "accepts two empty lists" $ isTrue "(eqv? '() '())"
+      it "rejects freshly allocated pairs" $ isFalse "(eqv? (cons 1 2) (cons 1 2))"
+      it "rejects values of different types" $ isFalse "(eqv? 'a \"a\")"
+      it "requires two arguments" $
+        evalString "(eqv? 1)" `shouldBe` Left (NumArgs "2" [Number (Int 1)])
+    describe "eq?" $ do
+      it "accepts the same symbol" $ isTrue "(eq? 'a 'a)"
+      it "accepts two empty lists" $ isTrue "(eq? '() '())"
+      it "rejects freshly allocated pairs" $ isFalse "(eq? (cons 1 2) (cons 1 2))"
+    describe "equal?" $ do
+      it "accepts structurally equal lists" $ isTrue "(equal? '(a (b) c) '(a (b) c))"
+      it "rejects lists of different lengths" $ isFalse "(equal? '(a b) '(a b c))"
+      it "accepts equal dotted lists" $ isTrue "(equal? '(1 2 . 3) (cons 1 (cons 2 3)))"
+      it "rejects dotted lists with different tails" $ isFalse "(equal? '(1 . 2) '(1 . 3))"
+      it "rejects a list against a dotted list" $ isFalse "(equal? '(1 2) '(1 . 2))"
+      it "accepts equal strings" $ isTrue "(equal? \"abc\" \"abc\")"
+      it "rejects different strings" $ isFalse "(equal? \"abc\" \"abd\")"
+      it "accepts equal vectors" $ isTrue "(equal? '#(1 (2) \"x\") '#(1 (2) \"x\"))"
+      it "rejects vectors of different lengths" $ isFalse "(equal? '#(1 2) '#(1))"
+      it "compares numbers inside lists with eqv?" $ isFalse "(equal? '(2) '(2.0))"
+      it "falls back to eqv? on atoms" $ isTrue "(equal? 'a 'a)"
+      it "rejects a list against a vector" $ isFalse "(equal? '(1 2) '#(1 2))"
+
   describe "nested expressions" $ do
     it "evaluates arguments before applying" $
       "(+ 1 (* 2 3))" `evaluatesTo` Int 7

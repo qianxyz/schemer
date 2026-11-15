@@ -3,6 +3,7 @@ module Schemer.Eval where
 import Control.Monad
 import Data.Char (toLower)
 import Data.Function (on)
+import Data.Functor.Classes (liftEq)
 import Schemer.Error
 import Schemer.Types
 
@@ -75,7 +76,11 @@ primitives =
     -- pairs and lists
     ("car", car),
     ("cdr", cdr),
-    ("cons", cons)
+    ("cons", cons),
+    -- equivalence predicates
+    ("eq?", binaryPredicate eqv),
+    ("eqv?", binaryPredicate eqv),
+    ("equal?", binaryPredicate equal)
   ]
 
 expectInt :: SExp -> ThrowsError Integer
@@ -207,3 +212,27 @@ cdr badArgList = throwError $ NumArgs "1" badArgList
 cons :: [SExp] -> ThrowsError SExp
 cons [x, y] = return $ DottedList [x] y
 cons badArgList = throwError $ NumArgs "2" badArgList
+
+-- | Lift a predicate on two expressions to a primitive taking two arguments.
+binaryPredicate :: (SExp -> SExp -> Bool) -> [SExp] -> ThrowsError SExp
+binaryPredicate p [a, b] = return $ Bool (p a b)
+binaryPredicate _ e = throwError $ NumArgs "2" e
+
+-- | Used both for @eqv?@ and @eq?@ as R5RS allows them to be the same.
+eqv :: SExp -> SExp -> Bool
+eqv (Atom a) (Atom b) = a == b
+eqv (Bool a) (Bool b) = a == b
+eqv (Char a) (Char b) = a == b
+eqv (Number a) (Number b) = a == b -- requires matching exactness
+eqv (List []) (List []) = True
+-- TODO: when we have identity for objects via IORefs
+-- we can compare references for pairs, vectors and strings
+eqv _ _ = False
+
+-- | @equal?@: recursively compares structures with 'eqv'.
+equal :: SExp -> SExp -> Bool
+equal (List xs) (List ys) = liftEq equal xs ys
+equal (DottedList xs x) (DottedList ys y) = liftEq equal xs ys && equal x y
+equal (Vector xs) (Vector ys) = liftEq equal xs ys
+equal (String a) (String b) = a == b
+equal a b = eqv a b
