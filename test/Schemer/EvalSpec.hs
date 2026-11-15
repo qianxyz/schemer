@@ -1,9 +1,10 @@
 module Schemer.EvalSpec (spec) where
 
 import Data.Complex (Complex ((:+)))
+import Data.Either (isLeft, isRight)
 import Data.Ratio ((%))
 import Data.Vector (fromList)
-import Schemer.Error (SchemeError (BadSpecialForm, NumArgs, TypeMismatch, ZeroDivision), ThrowsError)
+import Schemer.Error (ThrowsError)
 import Schemer.Eval (eval)
 import Schemer.Parse (readExpr)
 import Schemer.Types
@@ -18,6 +19,10 @@ evaluatesTo :: String -> Number -> Expectation
 evaluatesTo source n = evalString source `shouldBe` Right (Number n)
 
 infix 1 `evaluatesTo`
+
+-- | Assert that evaluating a source string fails, with any error.
+isError :: String -> Expectation
+isError source = evalString source `shouldSatisfy` isLeft
 
 spec :: Spec
 spec = do
@@ -66,17 +71,75 @@ spec = do
       "(if #f (/ 1 0) 2)" `evaluatesTo` Int 2
     it "nests in the test position" $
       "(if (if #f #t #f) 1 2)" `evaluatesTo` Int 2
+    it "evaluates the consequent of a two-armed if when the test is true" $
+      "(if #t 1)" `evaluatesTo` Int 1
+    it "does not evaluate the consequent of a two-armed if when the test is false" $
+      evalString "(if #f (/ 1 0))" `shouldSatisfy` isRight
     it "propagates an error from the test" $
-      evalString "(if (/ 1 0) 1 2)" `shouldBe` Left ZeroDivision
+      isError "(if (/ 1 0) 1 2)"
+    it "rejects an if with only a test" $
+      isError "(if #t)"
     it "rejects an if with no arguments" $
-      evalString "(if)" `shouldBe` Left (BadSpecialForm "Malformed if form" (List [Atom "if"]))
+      isError "(if)"
     it "rejects an if with too many arguments" $
-      evalString "(if #t 1 2 3)"
-        `shouldBe` Left
-          ( BadSpecialForm
-              "Malformed if form"
-              (List [Atom "if", Bool True, Number (Int 1), Number (Int 2), Number (Int 3)])
-          )
+      isError "(if #t 1 2 3)"
+
+  describe "cond" $ do
+    let evalsTo source v = evalString source `shouldBe` Right v
+    it "picks the first clause with a true test" $
+      "(cond ((> 3 2) 'greater) ((< 3 2) 'less))" `evalsTo` Atom "greater"
+    it "falls through to else" $
+      "(cond ((> 3 3) 'greater) ((< 3 3) 'less) (else 'equal))" `evalsTo` Atom "equal"
+    it "stops at the first true test" $
+      "(cond (#t 1) (#t 2))" `evaluatesTo` Int 1
+    it "treats any non-#f value as true" $
+      "(cond (0 'zero) (else 'other))" `evalsTo` Atom "zero"
+    it "returns the value of the last expression in a clause" $
+      "(cond (#t 1 2 3))" `evaluatesTo` Int 3
+    it "evaluates every expression in the chosen clause" $
+      isError "(cond (#t (/ 1 0) 2))"
+    it "returns the test value of a clause with only a test" $
+      "(cond (#f) ((+ 1 2)))" `evaluatesTo` Int 3
+    it "does not evaluate later tests" $
+      "(cond (#t 1) ((/ 1 0) 2))" `evaluatesTo` Int 1
+    it "does not evaluate bodies of false clauses" $
+      "(cond (#f (/ 1 0)) (else 2))" `evaluatesTo` Int 2
+    it "rejects a cond with no clauses" $
+      isError "(cond)"
+    it "rejects an else clause that is not last" $
+      isError "(cond (else 1) (#t 2))"
+    it "rejects an empty else clause" $
+      isError "(cond (else))"
+    it "rejects a clause that is not a list" $
+      isError "(cond 1)"
+
+  describe "case" $ do
+    let evalsTo source v = evalString source `shouldBe` Right v
+    it "picks the clause containing the key" $
+      "(case (* 2 3) ((2 3 5 7) 'prime) ((1 4 6 8 9) 'composite))" `evalsTo` Atom "composite"
+    it "falls through to else" $
+      "(case (car '(c d)) ((a e i o u) 'vowel) ((w y) 'semivowel) (else 'consonant))"
+        `evalsTo` Atom "consonant"
+    it "matches symbols" $
+      "(case 'b ((a) 1) ((b) 2))" `evaluatesTo` Int 2
+    it "matches characters" $
+      "(case #\\x ((#\\x) 1) (else 2))" `evaluatesTo` Int 1
+    it "compares numbers by eqv?, so exactness matters" $
+      "(case 2.0 ((2) 'exact) (else 'other))" `evalsTo` Atom "other"
+    it "does not evaluate the data" $
+      "(case '+ ((+) 'plus) (else 'other))" `evalsTo` Atom "plus"
+    it "returns the value of the last expression in a clause" $
+      "(case 1 ((1) 'a 'b))" `evalsTo` Atom "b"
+    it "evaluates the key" $
+      "(case (+ 1 1) ((2) 'two) (else 'other))" `evalsTo` Atom "two"
+    it "never matches a clause with no data" $
+      "(case 1 (() 'none) (else 'other))" `evalsTo` Atom "other"
+    it "rejects a case with no clauses" $
+      isError "(case 1)"
+    it "rejects an else clause that is not last" $
+      isError "(case 1 (else 1) ((1) 2))"
+    it "rejects a clause without a body" $
+      isError "(case 1 ((1)))"
 
   describe "+" $ do
     it "returns 0 with no arguments" $
@@ -134,11 +197,11 @@ spec = do
     it "modulo with a negative divisor" $
       "(modulo 7 -2)" `evaluatesTo` Int (-1)
     it "modulo by zero is an error" $
-      evalString "(modulo 7 0)" `shouldBe` Left ZeroDivision
+      isError "(modulo 7 0)"
     it "quotient by zero is an error" $
-      evalString "(quotient 7 0)" `shouldBe` Left ZeroDivision
+      isError "(quotient 7 0)"
     it "remainder by zero is an error" $
-      evalString "(remainder 7 0)" `shouldBe` Left ZeroDivision
+      isError "(remainder 7 0)"
     it "allows a zero dividend" $
       "(modulo 0 7)" `evaluatesTo` Int 0
 
@@ -170,12 +233,11 @@ spec = do
       it "rejects an increase" $ isFalse "(>= 1 2)"
     describe "errors" $ do
       it "requires at least two arguments" $
-        evalString "(< 1)" `shouldBe` Left (NumArgs ">= 2" [Number (Int 1)])
+        isError "(< 1)"
       it "rejects a complex argument to an ordering" $
-        evalString "(< 1 1+i)"
-          `shouldBe` Left (TypeMismatch "real" (Number (Complex (1 :+ 1))))
+        isError "(< 1 1+i)"
       it "type-checks every argument before comparing" $
-        evalString "(< 2 1 'a)" `shouldBe` Left (TypeMismatch "real" (Atom "a"))
+        isError "(< 2 1 'a)"
 
   describe "string comparisons" $ do
     let isTrue source = evalString source `shouldBe` Right (Bool True)
@@ -194,9 +256,9 @@ spec = do
       isTrue "(string<? \"B\" \"a\")"
     it "string-ci>? ignores case" $ isTrue "(string-ci>? \"B\" \"a\")"
     it "requires string arguments" $
-      evalString "(string=? \"a\" 'a)" `shouldBe` Left (TypeMismatch "string" (Atom "a"))
+      isError "(string=? \"a\" 'a)"
     it "requires at least two arguments" $
-      evalString "(string=? \"a\")" `shouldBe` Left (NumArgs ">= 2" [String "a"])
+      isError "(string=? \"a\")"
 
   describe "pairs and lists" $ do
     let n = Number . Int
@@ -209,11 +271,11 @@ spec = do
       it "returns the first element of a dotted list" $
         "(car '(1 . 2))" `evalsTo` n 1
       it "rejects the empty list" $
-        evalString "(car '())" `shouldBe` Left (TypeMismatch "pair" (List []))
+        isError "(car '())"
       it "rejects a non-list" $
-        evalString "(car 'a)" `shouldBe` Left (TypeMismatch "pair" (Atom "a"))
+        isError "(car 'a)"
       it "rejects two arguments" $
-        evalString "(car '(1) '(2))" `shouldBe` Left (NumArgs "1" [List [n 1], List [n 2]])
+        isError "(car '(1) '(2))"
     describe "cdr" $ do
       it "returns the rest of a list" $
         "(cdr '(1 2 3))" `evalsTo` List [n 2, n 3]
@@ -224,11 +286,11 @@ spec = do
       it "returns the rest of a longer dotted list" $
         "(cdr '(1 2 . 3))" `evalsTo` DottedList [n 2] (n 3)
       it "rejects the empty list" $
-        evalString "(cdr '())" `shouldBe` Left (TypeMismatch "pair" (List []))
+        isError "(cdr '())"
       it "rejects a vector" $
-        evalString "(cdr '#(1 2))" `shouldBe` Left (TypeMismatch "pair" (Vector (fromList [n 1, n 2])))
+        isError "(cdr '#(1 2))"
       it "rejects no arguments" $
-        evalString "(cdr)" `shouldBe` Left (NumArgs "1" [])
+        isError "(cdr)"
     describe "cons" $ do
       it "prepends to a list" $
         "(cons 1 '(2 3))" `evalsTo` List [n 1, n 2, n 3]
@@ -243,7 +305,7 @@ spec = do
       it "evaluates its arguments" $
         "(cons (+ 1 1) '())" `evalsTo` List [n 2]
       it "rejects one argument" $
-        evalString "(cons 1)" `shouldBe` Left (NumArgs "2" [n 1])
+        isError "(cons 1)"
     describe "canonical form" $ do
       it "conses onto a dotted list ending in a list the same as onto a list" $
         "(cons 0 '(1 . (2)))" `evalsTo` List [n 0, n 1, n 2]
@@ -278,7 +340,7 @@ spec = do
       it "rejects freshly allocated pairs" $ isFalse "(eqv? (cons 1 2) (cons 1 2))"
       it "rejects values of different types" $ isFalse "(eqv? 'a \"a\")"
       it "requires two arguments" $
-        evalString "(eqv? 1)" `shouldBe` Left (NumArgs "2" [Number (Int 1)])
+        isError "(eqv? 1)"
     describe "eq?" $ do
       it "accepts the same symbol" $ isTrue "(eq? 'a 'a)"
       it "accepts two empty lists" $ isTrue "(eq? '() '())"

@@ -13,19 +13,78 @@ eval e@(String _) = return e
 eval e@(Bool _) = return e
 eval e@(Char _) = return e
 eval e@(Vector _) = return e
+-- quote
 eval (List [Atom "quote", e]) = return e
 eval e@(List (Atom "quote" : _)) =
   throwError $ BadSpecialForm "Malformed quote form" e
-eval (List [Atom "if", predicate, conseq, alt]) =
-  do
-    result <- eval predicate
-    case result of
-      Bool False -> eval alt
-      _ -> eval conseq
+-- if
+eval (List [Atom "if", predicate, conseq, alt]) = do
+  result <- eval predicate
+  eval $ if isTruthy result then conseq else alt
+eval (List [Atom "if", predicate, conseq]) =
+  eval (List [Atom "if", predicate, conseq, unspecified])
 eval e@(List (Atom "if" : _)) =
   throwError $ BadSpecialForm "Malformed if form" e
+-- cond
+eval (List (Atom "cond" : clauses@(_ : _))) = evalCond clauses
+eval e@(List [Atom "cond"]) =
+  throwError $ BadSpecialForm "Malformed cond form" e
+-- case
+eval (List (Atom "case" : key : clauses@(_ : _))) =
+  eval key >>= \k -> evalCase k clauses
+eval e@(List (Atom "case" : _)) =
+  throwError $ BadSpecialForm "Malformed case form" e
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval e = throwError $ BadSpecialForm "Unrecognized special form" e
+
+-- | Used when the value of an expression is unspecified in R5RS.
+unspecified :: SExp
+unspecified = Bool False
+
+-- | Every value except #f counts as true.
+isTruthy :: SExp -> Bool
+isTruthy (Bool False) = False
+isTruthy _ = True
+
+-- | Evaluate a non-empty sequence of expressions in order and return
+-- the value of the last one.
+evalSequence :: SExp -> [SExp] -> ThrowsError SExp
+evalSequence e es = eval e >>= \v -> foldM (\_ x -> eval x) v es
+
+-- | Try cond clauses in order.
+evalCond :: [SExp] -> ThrowsError SExp
+evalCond [] = return unspecified
+evalCond [List (Atom "else" : e : es)] = evalSequence e es
+evalCond (clause@(List (Atom "else" : _)) : _) =
+  throwError $
+    BadSpecialForm
+      "Malformed cond clause: else must be last and non-empty"
+      clause
+evalCond (clause@(List (test : body)) : rest) = do
+  v <- eval test
+  if not (isTruthy v)
+    then evalCond rest
+    else case body of
+      [] -> return v -- (<test>) returns the value of the test
+      [Atom "=>", _] -> undefined -- TODO: support (<test> => <expression>)
+      (Atom "=>" : _) ->
+        throwError $
+          BadSpecialForm
+            "Malformed cond clause: => expects a single expression"
+            clause
+      (e : es) -> evalSequence e es
+evalCond (clause : _) =
+  throwError $ BadSpecialForm "Malformed cond clause" clause
+
+-- | Try case clauses in order, comparing the key with each datum by eqv?.
+evalCase :: SExp -> [SExp] -> ThrowsError SExp
+evalCase _ [] = return unspecified
+evalCase _ [List (Atom "else" : e : es)] = evalSequence e es
+evalCase key (List (List data' : e : es) : rest)
+  | any (eqv key) data' = evalSequence e es
+  | otherwise = evalCase key rest
+evalCase _ (clause : _) =
+  throwError $ BadSpecialForm "Malformed case clause" clause
 
 apply :: String -> [SExp] -> ThrowsError SExp
 apply func args =
